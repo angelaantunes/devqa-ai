@@ -6,10 +6,10 @@
     "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { openPage, fillInput, clickButton, getErrorMessage, login } from '../utils/utils.js';\n\ntest('Test User Locked', async ({ page }) => {\n    await openPage(page, 'https://www.saucedemo.com/');\n    await login(page, 'locked_out_user', 'secret_sauce');\n    const errorMessage = await getErrorMessage(page);\n    expect(errorMessage).toBe('Epic sadface: Sorry, this user has been locked out.');\n});",
     "manualSteps": [
       "Open the page https://www.saucedemo.com/",
-      "Fill in the username 'locked_out_user'",
-      "Fill in the password 'secret_sauce'",
-      "Click the 'Login' button",
-      "Verify the error message appears with the text 'Epic sadface: Sorry, this user has been locked out.'"
+      "Enter 'locked_out_user' in the Username field",
+      "Enter 'secret_sauce' in the Password field",
+      "Click the Login button",
+      "Verify the error message is displayed"
     ]
   },
   {
@@ -19,9 +19,9 @@
     "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { openPage, login, verifyNavigation } from '../utils/utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n    await openPage(page, 'https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await verifyNavigation(page, 'https://www.saucedemo.com/inventory.html');\n});",
     "manualSteps": [
       "Open the page https://www.saucedemo.com/",
-      "Fill in the username 'standard_user'",
-      "Fill in the password 'secret_sauce'",
-      "Click the 'Login' button",
+      "Enter 'standard_user' in the Username input",
+      "Enter 'secret_sauce' in the Password input",
+      "Click the Login button",
       "Verify that the URL is https://www.saucedemo.com/inventory.html"
     ]
   }

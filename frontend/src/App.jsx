@@ -15,10 +15,13 @@ function App() {
   const [githubTestUrl, setGithubTestUrl] = useState(null)
   const [githubReportUrl, setGithubReportUrl] = useState(null)
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const fetchTestCases = async () => {
     setLoading(true)
     try {
-      const res = await axios.get("/api/test-cases")
+      const res = await axios.get(`${API_URL}/api/test-cases`)
+      console.log("Resposta do backend:", res.data)
       setTestCases(res.data)
       setSection("testCases")
     } catch (err) {
@@ -30,7 +33,7 @@ function App() {
   const generateTests = async () => {
     setLoading(true)
     try {
-      const res = await axios.post("/api/generate-tests-from-cases")
+      const res = await axios.post(`${API_URL}/api/generate-tests-from-cases`)
       setTestCases(res.data)
       alert("✅ Testes Playwright gerados com sucesso!")
       setSection("testCases")
@@ -43,7 +46,7 @@ function App() {
   const saveGeneratedTests = async () => {
     setLoading(true)
     try {
-      const res = await axios.post("/api/save-generated-tests")
+      const res = await axios.post(`${API_URL}/api/save-generated-tests`)
       alert(`💾 ${res.data.count} ficheiros de teste guardados`)
     } catch (err) {
       alert("Erro ao salvar ficheiros de teste")
@@ -67,7 +70,7 @@ function App() {
   const runTests = async () => {
     setLoading(true)
     try {
-      const res = await axios.post("/api/run-playwright-tests")
+      const res = await axios.post(`${API_URL}/api/run-playwright-tests`)
       setLogs(res.data.stdout || "")
       setReportUrl(res.data.reportPath)
       setGithubTestUrl(res.data.githubTestUrl)
