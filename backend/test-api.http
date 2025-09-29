@@ -1,0 +1,13 @@
+GET http://localhost:3000/api/test-cases
+
+###
+
+POST http://localhost:3000/api/generate-tests-from-cases
+
+###
+
+POST http://localhost:3000/api/save-generated-tests
+
+###
+
+POST http://localhost:3000/api/run-playwright-tests

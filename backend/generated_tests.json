@@ -1,0 +1,28 @@
+[
+  {
+    "title": "Test User Locked",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/2",
+    "utilsCode": "export async function openPage(page, url) {\n    await page.goto(url);\n}\n\nexport async function fillInput(page, placeholder, value) {\n    await page.getByPlaceholder(placeholder).fill(value);\n}\n\nexport async function clickButton(page, text) {\n    await page.getByRole('button', { name: text }).click();\n}\n\nexport async function getErrorMessage(page) {\n    const errorElement = await page.$('[data-test=\"error\"], .error-message-container, [role=\"alert\"]');\n    return errorElement ? errorElement.innerText() : '';\n}\n\nexport async function verifyNavigation(page, expectedUrl) {\n    await page.waitForURL(expectedUrl);\n}\n\nexport async function login(page, username, password) {\n    await fillInput(page, 'Username', username);\n    await fillInput(page, 'Password', password);\n    await clickButton(page, 'Login');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { openPage, fillInput, clickButton, getErrorMessage, login } from '../utils/utils.js';\n\ntest('Test User Locked', async ({ page }) => {\n    await openPage(page, 'https://www.saucedemo.com/');\n    await login(page, 'locked_out_user', 'secret_sauce');\n    const errorMessage = await getErrorMessage(page);\n    expect(errorMessage).toBe('Epic sadface: Sorry, this user has been locked out.');\n});",
+    "manualSteps": [
+      "Open the page https://www.saucedemo.com/",
+      "Fill in the username 'locked_out_user'",
+      "Fill in the password 'secret_sauce'",
+      "Click the 'Login' button",
+      "Verify the error message appears with the text 'Epic sadface: Sorry, this user has been locked out.'"
+    ]
+  },
+  {
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function openPage(page, url) {\n    await page.goto(url);\n}\n\nexport async function fillInput(page, placeholder, value) {\n    await page.getByPlaceholder(placeholder).fill(value);\n}\n\nexport async function clickButton(page, text) {\n    await page.getByRole('button', { name: text }).click();\n}\n\nexport async function verifyNavigation(page, expectedUrl) {\n    await page.waitForURL(expectedUrl);\n}\n\nexport async function login(page, username, password) {\n    await fillInput(page, 'Username', username);\n    await fillInput(page, 'Password', password);\n    await clickButton(page, 'Login');\n}\n\nexport async function getErrorMessage(page) {\n    const errorElement = await page.$('[data-test=\"error\"], .error-message-container, [role=\"alert\"]');\n    return errorElement ? errorElement.innerText() : '';\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { openPage, login, verifyNavigation } from '../utils/utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n    await openPage(page, 'https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await verifyNavigation(page, 'https://www.saucedemo.com/inventory.html');\n});",
+    "manualSteps": [
+      "Open the page https://www.saucedemo.com/",
+      "Fill in the username 'standard_user'",
+      "Fill in the password 'secret_sauce'",
+      "Click the 'Login' button",
+      "Verify that the URL is https://www.saucedemo.com/inventory.html"
+    ]
+  }
+]
