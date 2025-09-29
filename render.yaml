@@ -1,0 +1,28 @@
+# render.yaml
+services:
+  # Backend Node.js
+  - type: web
+    name: devqa-ai-backend
+    env: node
+    branch: main
+    rootDir: backend
+    buildCommand: "npm install"
+    startCommand: "node server.js"   # ou "npm start" se estiver no package.json
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # adiciona aqui outras variáveis de ambiente, como DB_URL, tokens, etc.
+      # - key: DB_URL
+      #   value: "postgres://..."
+
+  
+  # Frontend React com Vite
+  - type: static_site
+    name: devqa-ai-frontend
+    branch: main
+    rootDir: frontend
+    buildCommand: "npm install && npm run build"
+    publishDir: dist
+    envVars:
+      - key: VITE_API_URL
+        value: "https://devqa-ai-backend.onrender.com"
