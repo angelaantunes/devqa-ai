@@ -21,11 +21,11 @@ function App() {
     setLoading(true)
     try {
       const res = await axios.get(`${API_URL}/api/test-cases`)
-      console.log("Resposta do backend:", res.data)
+      console.log("Backend response:", res.data)
       setTestCases(res.data)
       setSection("testCases")
     } catch (err) {
-      alert("Erro ao buscar test cases")
+      alert("Error fetching test cases")
     }
     setLoading(false)
   }
@@ -35,10 +35,10 @@ function App() {
     try {
       const res = await axios.post(`${API_URL}/api/generate-tests-from-cases`)
       setTestCases(res.data)
-      alert("✅ Testes Playwright gerados com sucesso!")
+      alert("✅ Playwright tests generated successfully!")
       setSection("testCases")
     } catch (err) {
-      alert("Erro ao gerar testes")
+      alert("Error generating tests")
     }
     setLoading(false)
   }
@@ -47,25 +47,12 @@ function App() {
     setLoading(true)
     try {
       const res = await axios.post(`${API_URL}/api/save-generated-tests`)
-      alert(`💾 ${res.data.count} ficheiros de teste guardados`)
+      alert(`💾 ${res.data.count} test files saved`)
     } catch (err) {
-      alert("Erro ao salvar ficheiros de teste")
+      alert("Error saving test files")
     }
     setLoading(false)
   }
-
-  /*const runTests = async () => {
-    setLoading(true)
-    try {
-      const res = await axios.post("/api/run-playwright-tests")
-      setLogs(res.data.stdout || "")
-      setReportUrl("/api/playwright-report")
-      setSection("logs")
-    } catch (err) {
-      alert("Erro ao executar testes")
-    }
-    setLoading(false)
-  }*/
 
   const runTests = async () => {
     setLoading(true)
@@ -77,10 +64,10 @@ function App() {
       setGithubReportUrl(res.data.githubReportUrl)
       setSection("logs")
       if (res.data.githubTestUrl && res.data.githubReportUrl) {
-        alert(`Testes enviados para o GitHub!\n` + `Test: ${res.data.githubTestUrl}\n` + `Report: ${res.data.githubReportUrl}`)
+        alert(`Tests sent to GitHub!\n` + `Test: ${res.data.githubTestUrl}\n` + `Report: ${res.data.githubReportUrl}`)
       }
     } catch (err) {
-      alert("Erro ao executar testes")
+      alert("Error running tests")
     }
     setLoading(false)
   }
@@ -92,24 +79,23 @@ function App() {
       </Typography>
       <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
         <Button variant="contained" startIcon={<List />} onClick={fetchTestCases} disabled={loading}>
-          Buscar Test Cases
+          Fetch Test Cases
         </Button>
         <Button variant="contained" color="secondary" startIcon={<AutoAwesome />} onClick={generateTests} disabled={loading}>
-          Gerar Testes
+          Generate Tests
         </Button>
         <Button variant="contained" color="info" startIcon={<Save />} onClick={saveGeneratedTests} disabled={loading}>
-          Salvar Testes
+          Save Tests
         </Button>
         <Button variant="contained" color="success" startIcon={<PlayArrow />} onClick={runTests} disabled={loading}>
-          Executar Testes
+          Run Tests
         </Button>
       </Stack>
 
-      {loading && <Typography>Carregando...</Typography>}
+      {loading && <Typography>Loading...</Typography>}
 
       {section === "testCases" && <TestCasesSection testCases={testCases} />}
       {section === "logs" && <LogsSection logs={logs} onShowReport={() => setSection("report")} />}
-      {/* {section === "report" && <ReportSection reportUrl={reportUrl} />} */}
       {section === "report" && <ReportSection reportUrl={reportUrl} githubTestUrl={githubTestUrl} githubReportUrl={githubReportUrl} />}
     </Container>
   )

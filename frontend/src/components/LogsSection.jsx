@@ -8,7 +8,7 @@ function LogsSection({ logs, onShowReport }) {
       <Divider sx={{ my: 1 }} />
       <pre style={{ whiteSpace: "pre-wrap" }}>{logs}</pre>
       <Button variant="outlined" sx={{ mt: 2 }} onClick={onShowReport}>
-        Ver Relatório Playwright
+        Report Playwright
       </Button>
     </Paper>
   )

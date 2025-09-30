@@ -11,20 +11,20 @@ function TestCasesSection({ testCases }) {
           <AccordionSummary expandIcon={<ExpandMore />}>
             <Typography sx={{ flexGrow: 1 }}>{tc.title}</Typography>
             <Link href={tc.url} target="_blank" rel="noreferrer" underline="hover">
-              Abrir Issue
+              Open Issue
             </Link>
           </AccordionSummary>
           <AccordionDetails>
             {tc.body && (
               <>
-                <Typography variant="subtitle1">📝 Conteúdo do Issue</Typography>
+                <Typography variant="subtitle1">📝 Issue Content</Typography>
                 <Typography sx={{ mb: 2 }}>{tc.body}</Typography>
                 <Divider sx={{ my: 1 }} />
               </>
             )}
             {tc.manualSteps && (
               <>
-                <Typography variant="subtitle1">📋 Passos Manuais</Typography>
+                <Typography variant="subtitle1">📋 Manual Steps</Typography>
                 <ol>
                   {tc.manualSteps.map((step, j) => (
                     <li key={j}>{step}</li>
@@ -35,7 +35,7 @@ function TestCasesSection({ testCases }) {
             )}
             {tc.playwrightCode && (
               <>
-                <Typography variant="subtitle1">💻 Código Playwright</Typography>
+                <Typography variant="subtitle1">💻 Playwright Code</Typography>
                 <pre style={{ background: "#f5f5f5", padding: "10px", whiteSpace: "pre-wrap" }}>{tc.playwrightCode}</pre>
               </>
             )}
