@@ -11,13 +11,13 @@ function TestCasesSection({ testCases }) {
           <AccordionSummary expandIcon={<ExpandMore />}>
             <Typography sx={{ flexGrow: 1 }}>{tc.title}</Typography>
             <Link href={tc.url} target="_blank" rel="noreferrer" underline="hover">
-              Open Issue
+              Open Ticket
             </Link>
           </AccordionSummary>
           <AccordionDetails>
             {tc.body && (
               <>
-                <Typography variant="subtitle1">📝 Issue Content</Typography>
+                <Typography variant="subtitle1">📝 Content</Typography>
                 <Typography sx={{ mb: 2 }}>{tc.body}</Typography>
                 <Divider sx={{ my: 1 }} />
               </>
