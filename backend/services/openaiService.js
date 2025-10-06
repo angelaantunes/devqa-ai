@@ -25,31 +25,17 @@ export async function generateOpenAITestCode(prompt) {
  * Gera código Playwright e passos manuais para um caso
  */
 export async function generateTestsForCase(testCase) {
- /* const prompt = `
+  // If a custom prompt is provided, use it; otherwise, use the default prompt
+  const prompt = testCase.customPrompt
+    ? testCase.customPrompt
+    : `
 You are an expert QA engineer. You are given a test case from GitHub issues.
 
 Title: ${testCase.title}
 Description: ${testCase.body || "No description provided"}
 
 Tasks:
-1. Generate Playwright (JavaScript) automated test code in ENGLISH that covers this scenario end-to-end.
-2. Write clear manual test steps in ENGLISH that a human tester could follow.
-
-Respond strictly in the following JSON format:
-{
-  "playwrightCode": "<Playwright test code here>",
-  "manualSteps": ["Step 1...", "Step 2...", "..."]
-}
-`;*/
-
-const prompt = `
-You are an expert QA engineer. You are given a test case from GitHub issues.
-
-Title: ${testCase.title}
-Description: ${testCase.body || "No description provided"}
-
-Tasks:
-1) Identify reusable actions (e.g. openPage, fillInput, clickButton, login, getErrorMessage, verifyNavigation).
+1) Identify reusable actions (e.g. openPage, fillInput, clickButton, login, getErrorMessage, verifyNavigation, sendApiRequest, verifyApiResponse).
 2) Generate helper functions for these actions in JavaScript. Put all helpers in 'utils.js'.
 3) In the Playwright test file, import and use these helpers.
 4) If no helpers are needed, return "utilsCode": "" (empty string).
@@ -57,21 +43,15 @@ Tasks:
 Hard rules:
 5) Use ES Modules syntax ONLY (import/export). NEVER use require().
 6) In the test file, import utils with: import { ... } from '../utils/utils.js'
-7) Every helper referenced in 'playwrightCode' MUST be fully implemented and exported in 'utilsCode' (no missing exports). Do not invent helpers that are not exported.
+7) Every helper referenced in 'playwrightCode' MUST be fully implemented and exported in 'utilsCode' (no missing exports).
+8) For API tests, helpers must include sendApiRequest(page, method, url, payload) and verifyApiResponse(response, expectedFields).
 
-Selectors and defaults:
-- fillInput(page, placeholder, value) must use: await page.getByPlaceholder(placeholder).fill(value)
-- clickButton(page, text) must use: await page.getByRole('button', { name: text }).click()
-- getErrorMessage(page) must return the visible text of the error element. Default selector:
-  '[data-test="error"], .error-message-container, [role="alert"]' (first that exists).
-- verifyNavigation(page, expectedUrl) must: await page.waitForURL(expectedUrl)
-- openPage(page, url) must: await page.goto(url)
-- login(page, username, password) must use fillInput + clickButton above.
-
-Consistency Check (do this before responding):
-- Parse the helper names imported from '../utils/utils.js' in 'playwrightCode'.
-- Ensure that 'utilsCode' exports a function with exactly each of those names.
-- If any helper is missing, add its full implementation to 'utilsCode' BEFORE returning the JSON.
+Manual test case rules (important!):
+- Manual steps MUST include example payloads and responses.
+- Steps must validate each important response field individually (Status, Reason, TotalConfigurations, NewConfigurations, etc.).
+- Include at least one happy path and one edge case (e.g. hash initialization delay).
+- Each step should be explicit (not generic "verify response", but e.g. "Verify Reason = 'New webhook(s) configured...'").
+- Always provide concrete data to test (e.g. webhook Name = "test1", URL = "http://localhost:3000/webhook").
 
 Return strictly this JSON (no backticks, no extra fields):
 {
@@ -82,7 +62,7 @@ Return strictly this JSON (no backticks, no extra fields):
 `;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4.1",
     messages: [
       { role: "system", content: "You generate Playwright tests with helper functions." },
       { role: "user", content: prompt }

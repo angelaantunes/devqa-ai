@@ -4,6 +4,32 @@ import fs from "fs"
 import path from "path"
 import { saveGeneratedTestsAsFiles } from "../services/saveTestsService.js";
 
+// Generate Playwright test for a single test case by index or id
+export async function generateTestForSingleCase(req, res) {
+  try {
+    const { number } = req.params;
+    const testCases = getTestCases();
+    console.log("number:", number);
+    // Find by GitHub issue number
+    const testCase = testCases.find(tc => tc.number == number);
+    if (!testCase) {
+      return res.status(404).json({ error: "Test case not found" });
+    }
+    const aiResult = await generateTestsForCase(testCase);
+    const result = {
+      title: testCase.title,
+      url: testCase.url,
+      utilsCode: aiResult.utilsCode || "",
+      playwrightCode: aiResult.playwrightCode,
+      manualSteps: aiResult.manualSteps,
+    };
+    res.json(result);
+  } catch (error) {
+    console.error("Error generating test for single case:", error);
+    res.status(500).json({ error: "Failed to generate test for single case" });
+  }
+}
+
 export async function generateTestsFromCases(req, res) {
   try {
     const testCases = getTestCases()
@@ -41,5 +67,41 @@ export function saveGeneratedTestsController(req, res) {
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+}
+
+
+// Generate Playwright test for a single test case by issue number, with custom prompt/data
+export async function generateTestForSingleCaseCustom(req, res) {
+  try {
+    const { number } = req.params;
+    const { customPrompt, extraData } = req.body;
+    const testCases = getTestCases();
+    const testCase = testCases.find(tc => tc.number == number);
+    if (!testCase) {
+      return res.status(404).json({ error: "Test case not found" });
+    }
+    // Always append customPrompt/extraData to the default prompt
+    let prompt = `You are a senior QA automation engineer. Given the following test case from a GitHub issue:\nTitle: ${testCase.title}\nDescription: ${testCase.body}`;
+    prompt += `\nYour tasks:\n1. Write a highly detailed, step-by-step list of manual test steps for a QA engineer.\n2. Generate robust Playwright test code in JavaScript that automates the scenario.\n3. Identify any reusable actions and generate helper functions in utils.js.\nReturn a JSON object with keys manualSteps, playwrightCode, utilsCode.`;
+    if (customPrompt) {
+      prompt += `\nAdditional instructions: ${customPrompt}`;
+    }
+    if (extraData) {
+      prompt += `\nExtra context: ${extraData}`;
+    }
+    // Call OpenAI with the combined prompt
+    const aiResult = await generateTestsForCase({ ...testCase, customPrompt: prompt });
+    const result = {
+      title: testCase.title,
+      url: testCase.url,
+      utilsCode: aiResult.utilsCode || "",
+      playwrightCode: aiResult.playwrightCode,
+      manualSteps: aiResult.manualSteps,
+    };
+    res.json(result);
+  } catch (error) {
+    console.error("Error generating test for single case with custom prompt:", error);
+    res.status(500).json({ error: "Failed to generate test for single case with custom prompt" });
   }
 }
