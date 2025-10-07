@@ -9,3 +9,5 @@ frontend/build/
 # Outras pastas temporárias
 dist/
 .env
+.env.development
+.env.production
