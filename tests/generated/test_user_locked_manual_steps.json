@@ -1,7 +1,7 @@
 [
   "Open the page https://www.saucedemo.com/",
-  "Fill in the username 'locked_out_user'",
-  "Fill in the password 'secret_sauce'",
-  "Click the 'Login' button",
-  "Verify the error message appears with the text 'Epic sadface: Sorry, this user has been locked out.'"
+  "Enter 'locked_out_user' in the Username field",
+  "Enter 'secret_sauce' in the Password field",
+  "Click the Login button",
+  "Verify the error message is displayed"
 ]
