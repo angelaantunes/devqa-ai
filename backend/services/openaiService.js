@@ -3,14 +3,26 @@ import dotenv from "dotenv";
 dotenv.config();
 
 
-const openai = new OpenAI({
+/*const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-});
+});*/
+
+/*const openai = new OpenAI({
+  apiKey: process.env.OPENROUTE_API_KEY,     // usar a chave do OpenRouter
+  baseURL: process.env.OPENAI_BASE_URL       // usar a base URL do OpenRouter
+});*/
+
+const openai = new OpenAI({
+    baseURL:process.env.HF_BASE_URL,
+    apiKey:process.env.HF_TOKEN,
+})
+
 
 // Gerar código Playwright ou sugestões a partir de prompt
 export async function generateOpenAITestCode(prompt) {
   const completion = await openai.chat.completions.create({
-    model: "gpt-4",
+    //model: "gpt-4o",
+    model:"moonshotai/Kimi-K2-Instruct-0905",
     messages: [
       { role: "system", content: "You generate clean Playwright test code." },
       { role: "user", content: prompt },
@@ -25,7 +37,6 @@ export async function generateOpenAITestCode(prompt) {
  * Gera código Playwright e passos manuais para um caso
  */
 export async function generateTestsForCase(testCase) {
-  // If a custom prompt is provided, use it; otherwise, use the default prompt
   const prompt = testCase.customPrompt
     ? testCase.customPrompt
     : `
@@ -34,35 +45,71 @@ You are an expert QA engineer. You are given a test case from GitHub issues.
 Title: ${testCase.title}
 Description: ${testCase.body || "No description provided"}
 
+Your goal:
+Generate a Playwright test file and a helper utilities file that follow **strict ES Modules syntax** (no CommonJS, no require, no module.exports).
+
 Tasks:
-1) Identify reusable actions (e.g. openPage, fillInput, clickButton, login, getErrorMessage, verifyNavigation, sendApiRequest, verifyApiResponse).
-2) Generate helper functions for these actions in JavaScript. Put all helpers in 'utils.js'.
-3) In the Playwright test file, import and use these helpers.
-4) If no helpers are needed, return "utilsCode": "" (empty string).
+1) Identify reusable actions (e.g. openPage, fillInput, clickButton, login, getErrorMessage, verifyNavigation, sendApiRequest, verifyApiResponse) needed for the test.
+2) For every action used in 'playwrightCode', generate a corresponding helper function in JavaScript and export it **by name** using 'export function' in 'utils.js'. Add all helpers for this test here. 
+3) In the Playwright test file, import and use only the helpers that are **actually exported** from 'utils.js'.
+4) If no helpers are needed, return "utilsCode": "" (empty string), and ensure the test file does not try to import any helpers.
+5) **At the start of utils.js, add a comment section listing the names of all exported helper functions for this test.** Example:
+   // Exported helpers: sendApiRequest, getErrorMessage
 
 Hard rules:
-5) Use ES Modules syntax ONLY (import/export). NEVER use require().
-6) In the test file, import utils with: import { ... } from '../utils/utils.js'
-7) Every helper referenced in 'playwrightCode' MUST be fully implemented and exported in 'utilsCode' (no missing exports).
-8) For API tests, helpers must include sendApiRequest(page, method, url, payload) and verifyApiResponse(response, expectedFields).
+- Use ES Modules syntax ONLY (import/export). NEVER use require().
+- Each function imported in the test file MUST exist and be exported by name in utils.js — no missing or extra helpers.
+- For API tests, sendApiRequest(page, method, url, payload) and verifyApiResponse(response, expectedFields) must follow these rules and be fully implemented and exported.
+- Do NOT use default exports. Do NOT use require().
+- If helpers are unused, ensure their export is removed from utils.js.
 
-Manual test case rules (important!):
-- Manual steps MUST include example payloads and responses.
-- Steps must validate each important response field individually (Status, Reason, TotalConfigurations, NewConfigurations, etc.).
-- Include at least one happy path and one edge case (e.g. hash initialization delay).
-- Each step should be explicit (not generic "verify response", but e.g. "Verify Reason = 'New webhook(s) configured...'").
-- Always provide concrete data to test (e.g. webhook Name = "test1", URL = "http://localhost:3000/webhook").
+Helper implementation rules (critical!):
+* Every helper function imported in 'playwrightCode' MUST be implemented and exported by name in utils.js with: export function <name>(...) { ... }
+* DO NOT use default exports anywhere.
+* DO NOT reference any helpers that are missing or not implemented.
+* If no helpers are needed, 'utilsCode' must be an empty string and NO import should be in 'playwrightCode'.
+* Check that helpers like sendApiRequest and getErrorMessage are exported if imported.
+
+Validation step (critical!):
+- After generating the test and the utils.js file, check that every helper in the test import appears with 'export function NAME' in utils.js. If any import is missing, add its implementation; if any export is not imported, remove it.
+
+🧩 Manual steps:
+- Always return manualSteps as a **list of strings**, NOT objects.
+- Each step should start with a number and a period (e.g., "1. Open the browser...").
+- DO NOT use { step, action } or any JSON objects. Just an array of strings.
 
 Return strictly this JSON (no backticks, no extra fields):
 {
   "utilsCode": "<complete utils.js code OR empty string>",
   "playwrightCode": "<complete Playwright test using the helpers and ESM imports>",
-  "manualSteps": ["Step 1...", "Step 2...", "..."]
+  "manualSteps": ["1. Step one...", "2. Step two...", "..."]
+}
+
+Example:
+playwrightCode:
+import { test, expect } from '@playwright/test';
+import { login, openPage } from '../utils/utils.js';
+
+test('Login works correctly', async ({ page }) => {
+  await openPage(page, '/login');
+  await login(page, 'user', 'pass');
+  await expect(page).toHaveURL('/dashboard');
+});
+
+utilsCode:
+export async function openPage(page, url) {
+  await page.goto(url);
+}
+
+export async function login(page, username, password) {
+  await page.fill('#username', username);
+  await page.fill('#password', password);
+  await page.click('button[type=submit]');
 }
 `;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4.1",
+    model: "moonshotai/Kimi-K2-Instruct-0905",
     messages: [
       { role: "system", content: "You generate Playwright tests with helper functions." },
       { role: "user", content: prompt }
@@ -71,16 +118,34 @@ Return strictly this JSON (no backticks, no extra fields):
     response_format: { type: "json_object" }
   });
 
-  const responseText = completion.choices[0].message.content.trim();
+  let responseText = completion.choices?.[0]?.message?.content || "";
 
-  let parsed;
+  // cleanup markdown blocks if present
+  responseText = responseText.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+
+  // extract first {...} JSON object
+  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) responseText = jsonMatch[0];
+
+  // try parse; if fails, attempt a simple repair of unescaped quotes in code strings
   try {
-    parsed = JSON.parse(responseText);
-  } catch (err) {
-    console.error("Resposta não é JSON válido:", responseText);
-    throw err;
+    return JSON.parse(responseText);
+  } catch (err1) {
+    // attempt to escape inner double-quotes inside code blocks between quotes
+    try {
+      // Heuristic: replace occurrences of "code with "inner "quotes" inside by escaping interior quotes
+      // We only attempt a mild repair — not bulletproof, but reduces common failures.
+      let repaired = responseText
+        // remove trailing non-json after the object if any
+        .replace(/}\s*[^}]*$/s, "}")
+        // escape any double quotes that appear between parentheses or after = in code (very heuristic)
+        .replace(/(["])([^\n]*?)(["])(?=[\s\S]*?:)/g, (m) => m); // noop safe fallback
+
+      // Final fallback: attempt to parse with Function constructor (risky) — avoid. Instead rethrow original.
+      throw err1;
+    } catch (err2) {
+      console.error("Resposta não é JSON válido:", responseText);
+      throw err1;
+    }
   }
-
-  return parsed;
-
 }

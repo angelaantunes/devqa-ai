@@ -81,7 +81,7 @@ function App() {
         <Button variant="contained" startIcon={<List />} onClick={fetchTestCases} disabled={loading}>
           Fetch Test Cases
         </Button>
-        <Button variant="contained" color="secondary" startIcon={<AutoAwesome />} onClick={generateTests} disabled={loading}>
+        {/* <Button variant="contained" color="secondary" startIcon={<AutoAwesome />} onClick={generateTests} disabled={loading}>
           Generate Tests
         </Button>
         <Button variant="contained" color="info" startIcon={<Save />} onClick={saveGeneratedTests} disabled={loading}>
@@ -89,7 +89,7 @@ function App() {
         </Button>
         <Button variant="contained" color="success" startIcon={<PlayArrow />} onClick={runTests} disabled={loading}>
           Run Tests
-        </Button>
+        </Button> */}
       </Stack>
 
       {loading && <Typography>Loading...</Typography>}

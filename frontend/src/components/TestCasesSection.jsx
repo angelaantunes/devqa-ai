@@ -15,6 +15,10 @@ function TestCasesSection({ testCases: initialTestCases }) {
   const [customLoadingNumber, setCustomLoadingNumber] = useState(null)
   const [showCustomPrompt, setShowCustomPrompt] = useState({})
   const [relatedNumbers, setRelatedNumbers] = useState({})
+  const [testResults, setTestResults] = useState({})
+
+  const [saveLoadingId, setSaveLoadingId] = useState(null)
+
   const API_URL = import.meta.env.VITE_API_URL
 
   const handleGenerateTest = async (number, idx) => {
@@ -38,7 +42,7 @@ function TestCasesSection({ testCases: initialTestCases }) {
   const handleGenerateTestCustom = async (number, idx, related = []) => {
     setCustomLoadingNumber(number)
     try {
-      const res = await axios.post(`${API_URL}/api/generate-test/${number}/custom`, {
+      const res = await axios.post(`${API_URL}/api/generate-test/${number}`, {
         customPrompt: customPrompts[number] || "",
         relatedNumbers: related,
       })
@@ -52,7 +56,12 @@ function TestCasesSection({ testCases: initialTestCases }) {
 
       const updatedTestCases = [...testCases]
       //updatedTestCases[idx] = { ...updatedTestCases[idx], ...res.data }
-      updatedTestCases[idx] = { ...updatedTestCases[idx], ...res.data, manualSteps: cleanedSteps }
+      //updatedTestCases[idx] = { ...updatedTestCases[idx], ...res.data, manualSteps: cleanedSteps }
+      updatedTestCases[idx] = {
+        ...updatedTestCases[idx],
+        ...res.data,
+        manualSteps: cleanedSteps,
+      }
       setTestCases(updatedTestCases)
       alert("✅ Custom test generated for this ticket!")
     } catch (err) {
@@ -70,6 +79,84 @@ function TestCasesSection({ testCases: initialTestCases }) {
     setShowCustomPrompt((prev) => ({ ...prev, [number]: !prev[number] }))
   }
 
+  const handleSaveTest = async (id) => {
+    setSaveLoadingId(id)
+    try {
+      await axios.post(`${API_URL}/api/save-generated-tests/${id}`)
+      alert("✅ Teste guardado para este ticket!")
+    } catch (err) {
+      alert("Erro ao guardar o teste!")
+    }
+    setSaveLoadingId(null)
+  }
+
+  /*const handleRunTest = async (id) => {
+    try {
+      const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`)
+      alert(`✅ Test for ticket ${id} executed!\n\n${res.data.stdout}`)
+    } catch (err) {
+      console.error(err)
+      alert(`❌ Error running test for ticket ${id}`)
+    }
+  }*/
+
+ const handleRunTest = async (id) => {
+  try {
+    // mostra estado de loading
+    setTestResults((prev) => ({
+      ...prev,
+      [id]: { loading: true },
+    }));
+
+    const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`);
+
+    const resultData = {
+      success: true,
+      stdout: res.data.stdout || "",
+      stderr: res.data.stderr || "",
+      reportPath: res.data.reportPath || null,
+    };
+
+    // atualiza estado na página
+    setTestResults((prev) => ({
+      ...prev,
+      [id]: resultData,
+    }));
+
+    // mostra também pop-up com o resultado (como dantes)
+    alert(
+      `✅ Test for ticket ${id} executed!\n\n` +
+      `--- STDOUT ---\n${resultData.stdout || "No output"}\n\n` +
+      (resultData.stderr
+        ? `--- STDERR ---\n${resultData.stderr}`
+        : "")
+    );
+
+    // Se quiseres apenas logar o caminho do relatório:
+    if (res.data.reportPath) {
+      console.log("📄 Report available at:", res.data.reportPath);
+    }
+
+  } catch (err) {
+    console.error(err);
+
+    const errorData = {
+      success: false,
+      stdout: "",
+      stderr: err.response?.data?.stderr || err.message,
+    };
+
+    setTestResults((prev) => ({
+      ...prev,
+      [id]: errorData,
+    }));
+
+    alert(
+      `❌ Error running test for ticket ${id}\n\n` +
+      `${errorData.stderr}`
+    );
+  }
+};
   if (!testCases.length) return null
   return (
     <Paper sx={{ p: 2, mb: 3 }}>
@@ -90,6 +177,16 @@ function TestCasesSection({ testCases: initialTestCases }) {
             {(tc.manualSteps || tc.playwrightCode || tc.utilsCode) && (
               <Button variant="text" size="small" sx={{ mb: 2, ml: 2 }} onClick={() => handleEditPromptClick(tc.number)}>
                 {showCustomPrompt[tc.number] ? "Cancel" : "Edit Prompt & Regenerate"}
+              </Button>
+            )}
+            {(tc.manualSteps || tc.playwrightCode || tc.utilsCode) && (
+              <Button variant="outlined" size="small" sx={{ mb: 2, ml: 2 }} onClick={() => handleSaveTest(tc.number)} disabled={saveLoadingId === tc.id}>
+                {saveLoadingId === tc.id ? "Saving..." : "Save files"}
+              </Button>
+            )}
+            {(tc.manualSteps || tc.playwrightCode || tc.utilsCode) && (
+              <Button variant="contained" size="small" color="success" sx={{ mb: 2, ml: 2 }} onClick={() => handleRunTest(tc.number)} disabled={saveLoadingId === tc.number}>
+                Run Test
               </Button>
             )}
 
@@ -160,6 +257,43 @@ function TestCasesSection({ testCases: initialTestCases }) {
                 <Typography variant="subtitle1">🔧 Helper Functions (utils.js)</Typography>
                 <pre style={{ background: "#f5f5f5", padding: "10px", whiteSpace: "pre-wrap" }}>{tc.utilsCode}</pre>
               </>
+            )}
+            {testResults[tc.number] && (
+              <Box sx={{ mt: 2, p: 2, backgroundColor: "#f5f5f5", borderRadius: 2 }}>
+                <Typography variant="subtitle1">🧪 Test Result ({testResults[tc.number].success ? "✅ Passed" : "❌ Failed"})</Typography>
+
+                {testResults[tc.number].loading ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Running test...
+                  </Typography>
+                ) : (
+                  <>
+                    {testResults[tc.number].stdout && (
+                      <>
+                        <Typography variant="body2" sx={{ fontWeight: "bold", mt: 1 }}>
+                          Output:
+                        </Typography>
+                        <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.9em" }}>{testResults[tc.number].stdout}</pre>
+                      </>
+                    )}
+
+                    {testResults[tc.number].stderr && (
+                      <>
+                        <Typography variant="body2" sx={{ fontWeight: "bold", mt: 1, color: "red" }}>
+                          Errors:
+                        </Typography>
+                        <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.9em", color: "red" }}>{testResults[tc.number].stderr}</pre>
+                      </>
+                    )}
+                  </>
+                )}
+              </Box>
+            )}
+
+            {testResults[tc.number]?.reportPath && (
+              <Button variant="outlined" size="small" color="secondary" sx={{ mb: 2, ml: 2 }} onClick={() => window.open(`${API_URL}${testResults[tc.number].reportPath}`, "_blank")}>
+                📄 View Full Report
+              </Button>
             )}
           </AccordionDetails>
         </Accordion>

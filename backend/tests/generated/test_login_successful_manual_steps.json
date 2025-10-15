@@ -1,7 +1,17 @@
 [
-  "Open the page https://www.saucedemo.com/",
-  "Enter 'standard_user' in the Username input",
-  "Enter 'secret_sauce' in the Password input",
-  "Click the Login button",
-  "Verify that the URL is https://www.saucedemo.com/inventory.html"
+  "1. Open a supported browser (Chrome, Edge, Firefox, Safari).",
+  "2. Navigate to https://www.saucedemo.com/ and verify the page loads successfully (HTTP 200, title contains 'Swag Labs').",
+  "3. Locate the Username input field by its placeholder text 'Username'.",
+  "4. Clear any pre-filled text in the Username field.",
+  "5. Type the exact string 'standard_user' into the Username field and confirm the value is entered correctly.",
+  "6. Locate the Password input field by its placeholder text 'Password'.",
+  "7. Clear any pre-filled text in the Password field.",
+  "8. Type the exact string 'secret_sauce' into the Password field (characters should be masked).",
+  "9. Locate the Login button (visible text 'Login').",
+  "10. Click the Login button and verify it becomes disabled or shows a loading state (if applicable).",
+  "11. Wait for the URL to change to https://www.saucedemo.com/inventory.html.",
+  "12. Verify the inventory page loads completely (check for key elements like the inventory list or page title).",
+  "13. Confirm no error messages are displayed on the new page.",
+  "14. Capture a screenshot of the inventory page for evidence.",
+  "15. Log test result as PASS if all steps complete successfully; otherwise, log as FAIL with detailed observations."
 ]

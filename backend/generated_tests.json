@@ -1,61 +1,377 @@
 [
   {
-    "title": "Endpoint - update POST webhook settings behavior",
-    "url": "https://github.com/angelaantunes/devqa-ai/issues/4",
-    "utilsCode": "import { expect } from '@playwright/test';\n\n/**\n * Sends an API request using Playwright's page.request context.\n * @param {import('@playwright/test').Page} page\n * @param {'GET'|'POST'|'PUT'|'DELETE'} method\n * @param {string} url\n * @param {object} payload\n * @returns {Promise<import('@playwright/test').APIResponse>}\n */\nexport async function sendApiRequest(page, method, url, payload = undefined) {\n  const options = {\n    method,\n    headers: {\n      'Content-Type': 'application/json',\n      'Accept': 'application/json',\n    },\n  };\n  if (payload !== undefined) {\n    options.data = JSON.stringify(payload);\n  }\n  return await page.request.fetch(url, options);\n}\n\n/**\n * Verifies that the API response contains the expected fields and values.\n * @param {import('@playwright/test').APIResponse} response\n * @param {object} expectedFields - An object with keys and expected values to check in the response JSON.\n */\nexport async function verifyApiResponse(response, expectedFields) {\n  expect(response.ok()).toBeTruthy();\n  const json = await response.json();\n  for (const [key, expectedValue] of Object.entries(expectedFields)) {\n    if (expectedValue === undefined) continue;\n    if (typeof expectedValue === 'function') {\n      // Allow passing a function for custom validation\n      expect(expectedValue(json[key])).toBeTruthy();\n    } else {\n      expect(json[key]).toEqual(expectedValue);\n    }\n  }\n  return json;\n}\n",
-    "playwrightCode": "import { test } from '@playwright/test';\nimport { sendApiRequest, verifyApiResponse } from '../utils/utils.js';\n\nconst API_URL = 'http://localhost:3000/webhook/settings/';\n\ntest.describe('POST /webhook/settings/ - Add Webhook Configurations', () => {\n  test('Happy path: Add two new webhook configurations, nothing deleted', async ({ page }) => {\n    // Example payload with two webhooks\n    const payload = [\n      {\n        Name: 'test1',\n        Active: true,\n        Authorization: null,\n        Url: 'http://localhost:3000/webhook',\n        PayloadMaxItems: 500,\n        PayloadInterval: 1,\n        Triggers: {\n          POSubmit: { Enabled: true, Filter: 'ApprovalCode = A' },\n          TOSubmit: { Enabled: true, Filter: null },\n          WOSubmit: { Enabled: true, Filter: null },\n          InventoryPolicyUpdate: { Enabled: false, Filter: null },\n          ForecastWeeklyUpdate: { Enabled: true, Filter: null },\n          ForecastMonthlyUpdate: { Enabled: false, Filter: null }\n        },\n        RetryHandling: { Attempts: 5, Gap: 10 },\n        ConfigurationMode: 'v1'\n      },\n      {\n        Name: 'test2',\n        Active: false,\n        Authorization: null,\n        Url: 'http://localhost:3000/webhook2',\n        PayloadMaxItems: 100,\n        PayloadInterval: 2,\n        Triggers: {\n          POSubmit: { Enabled: false, Filter: null },\n          TOSubmit: { Enabled: false, Filter: null },\n          WOSubmit: { Enabled: false, Filter: null },\n          InventoryPolicyUpdate: { Enabled: false, Filter: null },\n          ForecastWeeklyUpdate: { Enabled: false, Filter: null },\n          ForecastMonthlyUpdate: { Enabled: false, Filter: null }\n        },\n        RetryHandling: { Attempts: 3, Gap: 5 },\n        ConfigurationMode: 'v1'\n      }\n    ];\n\n    const response = await sendApiRequest(page, 'POST', API_URL, payload);\n    const json = await verifyApiResponse(response, {\n      Status: 'success',\n      Reason: 'New webhook(s) configured. Any updates to a webhook configuration should use the PUT method.',\n      TotalConfigurations: 2,\n      // NewConfigurations: array, checked below\n    });\n\n    // Validate NewConfigurations array\n    expect(Array.isArray(json.NewConfigurations)).toBeTruthy();\n    expect(json.NewConfigurations.length).toBe(2);\n    // Validate first webhook config fields\n    const first = json.NewConfigurations[0];\n    expect(first.Name).toBe('test1');\n    expect(first.Active).toBe(true);\n    expect(first.Url).toBe('http://localhost:3000/webhook');\n    expect(first.PayloadMaxItems).toBe(500);\n    expect(first.PayloadInterval).toBe(1);\n    expect(first.Triggers.POSubmit.Enabled).toBe(true);\n    expect(first.Triggers.POSubmit.Filter).toBe('ApprovalCode = A');\n    expect(first.Triggers.ForecastWeeklyUpdate.Enabled).toBe(true);\n    expect(first.Triggers.ForecastMonthlyUpdate.Enabled).toBe(false);\n    expect(first.RetryHandling.Attempts).toBe(5);\n    expect(first.RetryHandling.Gap).toBe(10);\n    expect(first.ConfigurationMode).toBe('v1');\n    expect(typeof first.PreferencesUpdated).toBe('string');\n    // Validate second webhook config fields\n    const second = json.NewConfigurations[1];\n    expect(second.Name).toBe('test2');\n    expect(second.Active).toBe(false);\n    expect(second.Url).toBe('http://localhost:3000/webhook2');\n    expect(second.PayloadMaxItems).toBe(100);\n    expect(second.PayloadInterval).toBe(2);\n    expect(second.Triggers.POSubmit.Enabled).toBe(false);\n    expect(second.RetryHandling.Attempts).toBe(3);\n    expect(second.RetryHandling.Gap).toBe(5);\n    expect(second.ConfigurationMode).toBe('v1');\n    expect(typeof second.PreferencesUpdated).toBe('string');\n  });\n\n  test('Edge case: Hash initialization delay message for new trigger', async ({ page }) => {\n    // Payload with a new trigger that requires hash initialization\n    const payload = [\n      {\n        Name: 'test3',\n        Active: true,\n        Authorization: null,\n        Url: 'http://localhost:3000/webhook3',\n        PayloadMaxItems: 200,\n        PayloadInterval: 1,\n        Triggers: {\n          POSubmit: { Enabled: true, Filter: null },\n          TOSubmit: { Enabled: false, Filter: null },\n          WOSubmit: { Enabled: false, Filter: null },\n          InventoryPolicyUpdate: { Enabled: false, Filter: null },\n          ForecastWeeklyUpdate: { Enabled: false, Filter: null },\n          ForecastMonthlyUpdate: { Enabled: false, Filter: null }\n        },\n        RetryHandling: { Attempts: 2, Gap: 3 },\n        ConfigurationMode: 'v1'\n      }\n    ];\n\n    const response = await sendApiRequest(page, 'POST', API_URL, payload);\n    const expectedReason = 'New webhook(s) configured. Any updates to a webhook configuration should use the PUT method. Your request to enable this trigger is being processed. Webhook notifications for this trigger may take up 15 minutes to begin transmission.';\n    const json = await verifyApiResponse(response, {\n      Status: 'success',\n      Reason: expectedReason,\n      TotalConfigurations: 1,\n    });\n    expect(Array.isArray(json.NewConfigurations)).toBeTruthy();\n    expect(json.NewConfigurations.length).toBe(1);\n    const first = json.NewConfigurations[0];\n    expect(first.Name).toBe('test3');\n    expect(first.Active).toBe(true);\n    expect(first.Url).toBe('http://localhost:3000/webhook3');\n    expect(first.PayloadMaxItems).toBe(200);\n    expect(first.PayloadInterval).toBe(1);\n    expect(first.Triggers.POSubmit.Enabled).toBe(true);\n    expect(first.RetryHandling.Attempts).toBe(2);\n    expect(first.RetryHandling.Gap).toBe(3);\n    expect(first.ConfigurationMode).toBe('v1');\n    expect(typeof first.PreferencesUpdated).toBe('string');\n  });\n});\n",
-    "manualSteps": [
-      "Step 1: Prepare a POST request to http://localhost:3000/webhook/settings/ with the following payload (array of two webhooks):\n[\n  {\n    \"Name\": \"test1\",\n    \"Active\": true,\n    \"Authorization\": null,\n    \"Url\": \"http://localhost:3000/webhook\",\n    \"PayloadMaxItems\": 500,\n    \"PayloadInterval\": 1,\n    \"Triggers\": {\n      \"POSubmit\": { \"Enabled\": true, \"Filter\": \"ApprovalCode = A\" },\n      \"TOSubmit\": { \"Enabled\": true, \"Filter\": null },\n      \"WOSubmit\": { \"Enabled\": true, \"Filter\": null },\n      \"InventoryPolicyUpdate\": { \"Enabled\": false, \"Filter\": null },\n      \"ForecastWeeklyUpdate\": { \"Enabled\": true, \"Filter\": null },\n      \"ForecastMonthlyUpdate\": { \"Enabled\": false, \"Filter\": null }\n    },\n    \"RetryHandling\": { \"Attempts\": 5, \"Gap\": 10 },\n    \"ConfigurationMode\": \"v1\"\n  },\n  {\n    \"Name\": \"test2\",\n    \"Active\": false,\n    \"Authorization\": null,\n    \"Url\": \"http://localhost:3000/webhook2\",\n    \"PayloadMaxItems\": 100,\n    \"PayloadInterval\": 2,\n    \"Triggers\": {\n      \"POSubmit\": { \"Enabled\": false, \"Filter\": null },\n      \"TOSubmit\": { \"Enabled\": false, \"Filter\": null },\n      \"WOSubmit\": { \"Enabled\": false, \"Filter\": null },\n      \"InventoryPolicyUpdate\": { \"Enabled\": false, \"Filter\": null },\n      \"ForecastWeeklyUpdate\": { \"Enabled\": false, \"Filter\": null },\n      \"ForecastMonthlyUpdate\": { \"Enabled\": false, \"Filter\": null }\n    },\n    \"RetryHandling\": { \"Attempts\": 3, \"Gap\": 5 },\n    \"ConfigurationMode\": \"v1\"\n  }\n]\nStep 2: Send the POST request.\nStep 3: Verify the response field 'Status' is 'success'.\nStep 4: Verify the response field 'Reason' is 'New webhook(s) configured. Any updates to a webhook configuration should use the PUT method.'.\nStep 5: Verify the response field 'TotalConfigurations' is 2.\nStep 6: Verify 'NewConfigurations' is an array of length 2.\nStep 7: For the first configuration in 'NewConfigurations', verify:\n  - Name = 'test1'\n  - Active = true\n  - Url = 'http://localhost:3000/webhook'\n  - PayloadMaxItems = 500\n  - PayloadInterval = 1\n  - Triggers.POSubmit.Enabled = true\n  - Triggers.POSubmit.Filter = 'ApprovalCode = A'\n  - Triggers.ForecastWeeklyUpdate.Enabled = true\n  - Triggers.ForecastMonthlyUpdate.Enabled = false\n  - RetryHandling.Attempts = 5\n  - RetryHandling.Gap = 10\n  - ConfigurationMode = 'v1'\n  - PreferencesUpdated is a string (timestamp)\nStep 8: For the second configuration in 'NewConfigurations', verify:\n  - Name = 'test2'\n  - Active = false\n  - Url = 'http://localhost:3000/webhook2'\n  - PayloadMaxItems = 100\n  - PayloadInterval = 2\n  - Triggers.POSubmit.Enabled = false\n  - RetryHandling.Attempts = 3\n  - RetryHandling.Gap = 5\n  - ConfigurationMode = 'v1'\n  - PreferencesUpdated is a string (timestamp)\nStep 9: Edge case: Prepare a POST request with a payload that enables a new trigger (e.g. POSubmit) for a new webhook:\n[\n  {\n    \"Name\": \"test3\",\n    \"Active\": true,\n    \"Authorization\": null,\n    \"Url\": \"http://localhost:3000/webhook3\",\n    \"PayloadMaxItems\": 200,\n    \"PayloadInterval\": 1,\n    \"Triggers\": {\n      \"POSubmit\": { \"Enabled\": true, \"Filter\": null },\n      \"TOSubmit\": { \"Enabled\": false, \"Filter\": null },\n      \"WOSubmit\": { \"Enabled\": false, \"Filter\": null },\n      \"InventoryPolicyUpdate\": { \"Enabled\": false, \"Filter\": null },\n      \"ForecastWeeklyUpdate\": { \"Enabled\": false, \"Filter\": null },\n      \"ForecastMonthlyUpdate\": { \"Enabled\": false, \"Filter\": null }\n    },\n    \"RetryHandling\": { \"Attempts\": 2, \"Gap\": 3 },\n    \"ConfigurationMode\": \"v1\"\n  }\n]\nStep 10: Send the POST request.\nStep 11: Verify the response field 'Status' is 'success'.\nStep 12: Verify the response field 'Reason' is 'New webhook(s) configured. Any updates to a webhook configuration should use the PUT method. Your request to enable this trigger is being processed. Webhook notifications for this trigger may take up 15 minutes to begin transmission.'.\nStep 13: Verify the response field 'TotalConfigurations' is 1.\nStep 14: Verify 'NewConfigurations' is an array of length 1.\nStep 15: For the configuration in 'NewConfigurations', verify:\n  - Name = 'test3'\n  - Active = true\n  - Url = 'http://localhost:3000/webhook3'\n  - PayloadMaxItems = 200\n  - PayloadInterval = 1\n  - Triggers.POSubmit.Enabled = true\n  - RetryHandling.Attempts = 2\n  - RetryHandling.Gap = 3\n  - ConfigurationMode = 'v1'\n  - PreferencesUpdated is a string (timestamp)"
-    ]
-  },
-  {
-    "title": "Test user creation on /api/users endpoint",
-    "url": "https://github.com/angelaantunes/devqa-ai/issues/3",
-    "utilsCode": "export async function sendApiRequest(page, method, url, payload) {\n  const response = await page.request.fetch(url, {\n    method,\n    headers: {\n      'Content-Type': 'application/json',\n    },\n    body: payload ? JSON.stringify(payload) : undefined,\n    timeout: 1000 // 1 second timeout as per acceptance criteria\n  });\n  return response;\n}\n\nexport async function verifyApiResponse(response, expectedFields) {\n  // Check status\n  if (expectedFields.status !== undefined) {\n    if (response.status() !== expectedFields.status) {\n      throw new Error(`Expected status ${expectedFields.status}, got ${response.status()}`);\n    }\n  }\n  // Check response time\n  if (expectedFields.maxResponseTimeMs !== undefined) {\n    const timing = response.timing();\n    if (timing && timing.responseEnd - timing.startTime > expectedFields.maxResponseTimeMs) {\n      throw new Error(`Response took longer than ${expectedFields.maxResponseTimeMs}ms`);\n    }\n  }\n  const body = await response.json();\n  // Check name\n  if (expectedFields.name !== undefined) {\n    if (body.name !== expectedFields.name) {\n      throw new Error(`Expected name '${expectedFields.name}', got '${body.name}'`);\n    }\n  }\n  // Check job\n  if (expectedFields.job !== undefined) {\n    if (body.job !== expectedFields.job) {\n      throw new Error(`Expected job '${expectedFields.job}', got '${body.job}'`);\n    }\n  }\n  // Check id\n  if (expectedFields.id === 'auto') {\n    if (!('id' in body)) {\n      throw new Error('Response missing id field');\n    }\n    if (typeof body.id !== 'string' && typeof body.id !== 'number') {\n      throw new Error('id field is not a string or number');\n    }\n  }\n  // Check createdAt\n  if (expectedFields.createdAt === 'iso8601') {\n    if (!('createdAt' in body)) {\n      throw new Error('Response missing createdAt field');\n    }\n    // Simple ISO8601 validation\n    const iso8601Regex = /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$/;\n    if (!iso8601Regex.test(body.createdAt)) {\n      throw new Error(`createdAt field is not a valid ISO8601 timestamp: ${body.createdAt}`);\n    }\n  }\n  return body;\n}\n",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { sendApiRequest, verifyApiResponse } from '../utils/utils.js';\n\ntest.describe('POST /api/users', () => {\n  test('should create user successfully (happy path)', async ({ page }) => {\n    const url = 'https://reqres.in/api/users';\n    const payload = {\n      name: 'morpheus',\n      job: 'leader'\n    };\n    const response = await sendApiRequest(page, 'POST', url, payload);\n    await verifyApiResponse(response, {\n      status: 201,\n      name: 'morpheus',\n      job: 'leader',\n      id: 'auto',\n      createdAt: 'iso8601',\n      maxResponseTimeMs: 1000\n    });\n  });\n\n  test('should fail with missing name (edge case)', async ({ page }) => {\n    const url = 'https://reqres.in/api/users';\n    const payload = {\n      job: 'leader'\n    };\n    const response = await sendApiRequest(page, 'POST', url, payload);\n    // Expect 201 or 400 depending on API behavior; here we expect 201 as per reqres.in behavior\n    await verifyApiResponse(response, {\n      status: 201,\n      job: 'leader',\n      id: 'auto',\n      createdAt: 'iso8601',\n      maxResponseTimeMs: 1000\n    });\n    // Optionally, check that name is undefined or missing\n    const body = await response.json();\n    expect(body.name).toBeUndefined();\n  });\n});\n",
-    "manualSteps": [
-      "Step 1: Open a REST client (e.g. Postman) and set the method to POST.",
-      "Step 2: Set the URL to https://reqres.in/api/users.",
-      "Step 3: In the request body, enter the following JSON:\n{\n  \"name\": \"morpheus\",\n  \"job\": \"leader\"\n}",
-      "Step 4: Send the request.",
-      "Step 5: Verify the response status is 201 Created.",
-      "Step 6: Verify the response is received in less than 1 second.",
-      "Step 7: Verify the response body contains:\n- name = \"morpheus\"\n- job = \"leader\"\n- id is present and is a string or number\n- createdAt is present and is a valid ISO8601 timestamp (e.g. 2025-09-26T10:15:30.000Z)",
-      "Step 8 (Edge Case): Repeat steps 1-4, but use this body:\n{\n  \"job\": \"leader\"\n}",
-      "Step 9: Verify the response status is 201 Created.",
-      "Step 10: Verify the response body contains:\n- job = \"leader\"\n- id is present and is a string or number\n- createdAt is present and is a valid ISO8601 timestamp\n- name is missing or undefined"
-    ]
-  },
-  {
-    "title": "Test User Locked",
-    "url": "https://github.com/angelaantunes/devqa-ai/issues/2",
-    "utilsCode": "export async function openPage(page, url) {\n  await page.goto(url);\n}\n\nexport async function fillInput(page, placeholder, value) {\n  await page.getByPlaceholder(placeholder).fill(value);\n}\n\nexport async function clickButton(page, buttonText) {\n  await page.getByRole('button', { name: buttonText }).click();\n}\n\nexport async function getErrorMessage(page) {\n  // The error message container has data-test=\"error\" on saucedemo\n  return await page.locator('[data-test=\"error\"]').textContent();\n}\n\nexport async function login(page, username, password) {\n  await fillInput(page, 'Username', username);\n  await fillInput(page, 'Password', password);\n  await clickButton(page, 'Login');\n}\n",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { openPage, login, getErrorMessage } from '../utils/utils.js';\n\ntest('Locked out user sees error message', async ({ page }) => {\n  await openPage(page, 'https://www.saucedemo.com/');\n  await login(page, 'locked_out_user', 'secret_sauce');\n  const errorMsg = await getErrorMessage(page);\n  expect(errorMsg).toContain('Epic sadface: Sorry, this user has been locked out.');\n});\n",
-    "manualSteps": [
-      "Step 1: Open https://www.saucedemo.com/ in a browser.",
-      "Step 2: In the input with placeholder 'Username', enter: locked_out_user",
-      "Step 3: In the input with placeholder 'Password', enter: secret_sauce",
-      "Step 4: Click the 'Login' button.",
-      "Step 5: Verify that an error message appears with the text: 'Epic sadface: Sorry, this user has been locked out.'",
-      "Edge Case: Repeat steps 2-5 but leave the 'Password' field empty. Verify that the error message is: 'Epic sadface: Password is required'",
-      "Edge Case: Repeat steps 2-5 but leave the 'Username' field empty. Verify that the error message is: 'Epic sadface: Username is required'",
-      "Happy Path: Enter username 'standard_user' and password 'secret_sauce', click 'Login', and verify that you are navigated to the inventory page (URL contains '/inventory.html')."
-    ]
-  },
-  {
+    "number": 1,
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "utilsCode": "export async function openPage(page, url) {\n  await page.goto(url);\n}\n\nexport async function fillInput(page, placeholder, value) {\n  await page.locator(`input[placeholder='${placeholder}']`).fill(value);\n}\n\nexport async function clickButton(page, buttonText) {\n  await page.getByRole('button', { name: buttonText }).click();\n}\n\nexport async function verifyNavigation(page, expectedUrl) {\n  await page.waitForURL(expectedUrl);\n}\n\nexport async function login(page, username, password) {\n  await fillInput(page, 'Username', username);\n  await fillInput(page, 'Password', password);\n  await clickButton(page, 'Login');\n}\n",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { openPage, login, verifyNavigation } from '../utils/utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await openPage(page, 'https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await verifyNavigation(page, 'https://www.saucedemo.com/inventory.html');\n  // Optionally, verify some element on the inventory page\n  await expect(page.locator('.inventory_list')).toBeVisible();\n});\n",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.getByPlaceholder('Username').fill(username);\n  await page.getByPlaceholder('Password').fill(password);\n  await page.getByRole('button', { name: 'Login' }).click();\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n});",
     "manualSteps": [
-      "Step 1: Open the page https://www.saucedemo.com/",
-      "Step 2: Enter the username 'standard_user' into the input with placeholder 'Username'.",
-      "Step 3: Enter the password 'secret_sauce' into the input with placeholder 'Password'.",
-      "Step 4: Click the 'Login' button.",
-      "Step 5: Verify that the browser navigates to https://www.saucedemo.com/inventory.html.",
-      "Step 6 (Happy Path): Confirm that the inventory list is visible on the page.",
-      "Step 7 (Edge Case): Repeat steps 2-4 with username 'standard_user' and password 'wrong_password'.",
-      "Step 8: Verify that an error message appears: 'Epic sadface: Username and password do not match any user in this service'."
+      "1. Open a supported browser (Chrome, Edge, Firefox, Safari).",
+      "2. Navigate to https://www.saucedemo.com/ and verify the page loads successfully (HTTP 200, title contains 'Swag Labs').",
+      "3. Locate the Username input field by its placeholder text 'Username'.",
+      "4. Clear any pre-filled text in the Username field.",
+      "5. Type the exact string 'standard_user' into the Username field and confirm the value is entered correctly.",
+      "6. Locate the Password input field by its placeholder text 'Password'.",
+      "7. Clear any pre-filled text in the Password field.",
+      "8. Type the exact string 'secret_sauce' into the Password field (characters should be masked).",
+      "9. Locate the Login button (visible text 'Login').",
+      "10. Click the Login button and verify it becomes disabled or shows a loading state (if applicable).",
+      "11. Wait for the URL to change to https://www.saucedemo.com/inventory.html.",
+      "12. Verify the inventory page loads completely (check for key elements like the inventory list or page title).",
+      "13. Confirm no error messages are displayed on the new page.",
+      "14. Capture a screenshot of the inventory page for evidence.",
+      "15. Log test result as PASS if all steps complete successfully; otherwise, log as FAIL with detailed observations."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "/**\n * utils.js – reusable Playwright helpers for Swag Labs\n * Exports ESM functions\n */\n\n/**\n * Fill username and password and click Login button\n * @param {import('@playwright/test').Page} page\n * @param {string} username\n * @param {string} password\n */\nexport async function login(page, username, password) {\n  const usernameInput = page.locator('input[placeholder=\"Username\"]');\n  const passwordInput = page.locator('input[placeholder=\"Password\"]');\n  const loginButton   = page.locator('input[type=\"submit\"][value=\"Login\"]');\n\n  await usernameInput.fill(username);\n  await passwordInput.fill(password);\n  await loginButton.click();\n}\n\n/**\n * Logout from the inventory page (if user menu exists)\n * @param {import('@playwright/test').Page} page\n */\nexport async function logout(page) {\n  const menuButton = page.locator('#react-burger-menu-btn');\n  const logoutLink = page.locator('#logout_sidebar_link');\n\n  if (await menuButton.isVisible()) {\n    await menuButton.click();\n    await logoutLink.click();\n  }\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Login flow', () => {\n  test('successful login with standard_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n\n    // Perform login via reusable helper\n    await login(page, 'standard_user', 'secret_sauce');\n\n    // Verify redirection to inventory\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n\n    // Basic sanity check on inventory page\n    await expect(page.locator('[data-test=\"inventory-container\"]')).toBeVisible();\n  });\n});",
+    "manualSteps": [
+      "1. Open a clean browser instance (Chrome, Edge, Firefox, or Safari).",
+      "2. Navigate to https://www.saucedemo.com/ and verify the page loads completely (no console errors, network calls return 200/304).",
+      "3. Verify the login form is visible: locate the Username input field with placeholder text \"Username\".",
+      "4. Enter the exact text standard_user into the Username field (no leading/trailing spaces).",
+      "5. Verify the Password input field with placeholder text \"Password\" is visible and masked.",
+      "6. Enter the exact text secret_sauce into the Password field (masked typing).",
+      "7. Verify the Login button is enabled and labeled \"Login\".",
+      "8. Click the Login button (left-click, no keyboard submit).",
+      "9. Wait for the browser URL to change to https://www.saucedemo.com/inventory.html (explicit wait up to 10 s).",
+      "10. Verify the inventory page loads completely: page title contains \"Swag Labs\", inventory container is visible, and no login error messages appear.",
+      "11. Capture a screenshot of the inventory page for evidence.",
+      "12. Log out (if applicable) and close the browser."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "/**\n * Perform login on Swag Labs\n * @param {import('@playwright/test').Page} page\n * @param {string} username\n * @param {string} password\n */\nexport async function login(page, username, password) {\n  await page.getByPlaceholder('Username').fill(username);\n  await page.getByPlaceholder('Password').fill(password);\n  await page.getByRole('button', { name: 'Login' }).click();\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user should redirect to inventory page', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n});",
+    "manualSteps": [
+      {
+        "step": 1,
+        "action": "Open the browser and navigate to https://www.saucedemo.com/",
+        "expected": "The Swag Labs login page loads successfully with the URL https://www.saucedemo.com/ displayed in the address bar."
+      },
+      {
+        "step": 2,
+        "action": "Locate the Username input field by its placeholder text \"Username\".",
+        "expected": "The Username input field is visible and enabled for text entry."
+      },
+      {
+        "step": 3,
+        "action": "Enter the text \"standard_user\" into the Username input field.",
+        "expected": "The text \"standard_user\" appears in the Username input field."
+      },
+      {
+        "step": 4,
+        "action": "Locate the Password input field by its placeholder text \"Password\".",
+        "expected": "The Password input field is visible and enabled for text entry."
+      },
+      {
+        "step": 5,
+        "action": "Enter the text \"secret_sauce\" into the Password input field.",
+        "expected": "The text \"secret_sauce\" appears masked in the Password input field."
+      },
+      {
+        "step": 6,
+        "action": "Locate the Login button.",
+        "expected": "The Login button is visible and enabled."
+      },
+      {
+        "step": 7,
+        "action": "Click the Login button.",
+        "expected": "The login request is initiated."
+      },
+      {
+        "step": 8,
+        "action": "Wait for the page to load after the login request.",
+        "expected": "The browser navigates to https://www.saucedemo.com/inventory.html and the inventory page is displayed."
+      },
+      {
+        "step": 9,
+        "action": "Verify the current URL is https://www.saucedemo.com/inventory.html.",
+        "expected": "The URL in the address bar matches https://www.saucedemo.com/inventory.html."
+      }
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "/**\n * utils.js – reusable helper functions for Swag Labs tests\n * Export as ESM\n */\n\n/**\n * Perform login on Swag Labs\n * @param {import('@playwright/test').Page} page\n * @param {string} username\n * @param {string} password\n */\nexport async function login(page, username, password) {\n  const userInput = page.locator('input[placeholder=\"Username\"]');\n  const passInput = page.locator('input[placeholder=\"Password\"]');\n  const loginBtn  = page.locator('input[type=\"submit\"][value=\"Login\"], button:has-text(\"Login\")');\n\n  await userInput.clear();\n  await userInput.fill(username);\n  await passInput.clear();\n  await passInput.fill(password);\n  await loginBtn.click();\n  // Wait for navigation to complete\n  await page.waitForLoadState('networkidle');\n}\n\n/**\n * Logout from Swag Labs (via burger menu)\n * @param {import('@playwright/test').Page} page\n */\nexport async function logout(page) {\n  await page.click('button#react-burger-menu-btn');\n  await page.click('a#logout_sidebar_link');\n  await page.waitForLoadState('networkidle');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Swag Labs – Successful Login', () => {\n  test('standard_user can log in and land on inventory page', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  });\n});",
+    "manualSteps": [
+      "1. Open a supported browser (Chrome, Edge, Firefox, Safari).",
+      "2. Navigate to https://www.saucedemo.com/ and verify the page loads completely (check that the login form is visible).",
+      "3. Locate the Username input field by its placeholder text “Username”.",
+      "4. Clear any pre-filled text and type standard_user into the Username field.",
+      "5. Locate the Password input field by its placeholder text “Password”.",
+      "6. Clear any pre-filled text and type secret_sauce into the Password field.",
+      "7. Locate the Login button (text = “Login”) and verify it is enabled.",
+      "8. Click the Login button.",
+      "9. Wait for the browser URL to change to https://www.saucedemo.com/inventory.html.",
+      "10. Verify the new page loads successfully (check for a visible product list or page title).",
+      "11. (Optional) Capture a screenshot for evidence.",
+      "12. Log out and close the browser to return to the initial state."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function fillInput(page, placeholder, value) {\n  const input = page.locator(`input[placeholder=\"${placeholder}\"]`);\n  await input.waitFor({ state: 'visible' });\n  await input.fill(value);\n}\n\nexport async function clickButton(page, text) {\n  const button = page.locator(`button:has-text(\"${text}\")`);\n  await button.waitFor({ state: 'visible' });\n  await button.click();\n}\n\nexport async function login(page, username, password) {\n  await fillInput(page, 'Username', username);\n  await fillInput(page, 'Password', password);\n  await clickButton(page, 'Login');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user should land on inventory page', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n});",
+    "manualSteps": [
+      "1. Open a new browser tab and navigate to https://www.saucedemo.com/",
+      "2. Wait until the login form is fully rendered (both username and password fields are visible and enabled)",
+      "3. Click inside the Username input field (placeholder=\"Username\") to focus it",
+      "4. Type the exact string standard_user (no leading/trailing spaces)",
+      "5. Verify the typed value is displayed as asterisks/bullets if the field masks characters, otherwise verify the exact text",
+      "6. Click inside the Password input field (placeholder=\"Password\") to focus it",
+      "7. Type the exact string secret_sauce (no leading/trailing spaces)",
+      "8. Verify the typed value is visually masked (shown as bullets/discs)",
+      "9. Locate the Login button (text equals \"Login\") and verify it is enabled",
+      "10. Click the Login button",
+      "11. Wait for the browser to finish navigation",
+      "12. Verify the URL in the address bar is exactly https://www.saucedemo.com/inventory.html",
+      "13. Verify the page displays the inventory list heading (e.g., \"Products\") to confirm successful login"
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  const userInput = page.locator('input[placeholder=\"Username\"]');\n  const passInput = page.locator('input[placeholder=\"Password\"]');\n  const loginBtn  = page.locator('input[type=\"submit\"][value=\"Login\"], button:has-text(\"Login\")');\n\n  await userInput.waitFor({ state: 'visible' });\n  await userInput.fill(username);\n  await passInput.fill(password);\n  await loginBtn.click();\n  await page.waitForLoadState('networkidle');\n}\n\nexport async function safeLogin(page, username, password) {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, username, password);\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user should land on inventory page', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n});",
+    "manualSteps": [
+      {
+        "step": 1,
+        "action": "Open a clean browser instance (Chrome, Edge, Firefox or Safari) in private/incognito mode to avoid cached sessions."
+      },
+      {
+        "step": 2,
+        "action": "Navigate to https://www.saucedemo.com/ and wait until the login form is fully rendered (i.e., both Username and Password fields are visible and enabled)."
+      },
+      {
+        "step": 3,
+        "action": "Locate the input field with the placeholder text “Username” and click inside it to focus."
+      },
+      {
+        "step": 4,
+        "action": "Type the exact string standard_user (case-sensitive, no leading/trailing spaces) into the Username field."
+      },
+      {
+        "step": 5,
+        "action": "Locate the input field with the placeholder text “Password” and click inside it to focus."
+      },
+      {
+        "step": 6,
+        "action": "Type the exact string secret_sauce (case-sensitive, no leading/trailing spaces) into the Password field."
+      },
+      {
+        "step": 7,
+        "action": "Verify that both fields contain the correct values (optional visual check)."
+      },
+      {
+        "step": 8,
+        "action": "Locate the Login button (text equals “Login”) and click it."
+      },
+      {
+        "step": 9,
+        "action": "Wait for the browser to finish navigation and confirm the new URL is exactly https://www.saucedemo.com/inventory.html."
+      },
+      {
+        "step": 10,
+        "action": "Verify that the inventory page loads successfully (e.g., page title contains “Swag Labs” and at least one inventory item is displayed)."
+      },
+      {
+        "step": 11,
+        "action": "Log test result as PASS if all above conditions are met; otherwise FAIL with detailed notes."
+      }
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function fillField(page, placeholder, value) {\n  const input = page.locator(`input[placeholder=\"${placeholder}\"]`);\n  await input.clear();\n  await input.fill(value);\n}\n\nexport async function login(page, username, password) {\n  await fillField(page, 'Username', username);\n  await fillField(page, 'Password', password);\n  await page.click('input[type=\"submit\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n});",
+    "manualSteps": [
+      "1. Open a supported browser (Chrome, Edge, Firefox, or Safari).",
+      "2. Navigate to https://www.saucedemo.com/ and verify the Swag Labs login page loads completely (logo, inputs, and button are visible).",
+      "3. Locate the Username input field using its placeholder text \"Username\".",
+      "4. Clear any pre-filled text in the Username field (if present).",
+      "5. Type the exact string \"standard_user\" into the Username field.",
+      "6. Verify the typed value appears correctly in the Username field.",
+      "7. Locate the Password input field using its placeholder text \"Password\".",
+      "8. Clear any pre-filled text in the Password field (if present).",
+      "9. Type the exact string \"secret_sauce\" into the Password field.",
+      "10. Verify the typed value is masked (dots/asterisks) in the Password field.",
+      "11. Locate the Login button on the page.",
+      "12. Click the Login button.",
+      "13. Wait for the browser to finish navigating.",
+      "14. Verify the URL in the address bar is exactly https://www.saucedemo.com/inventory.html.",
+      "15. Verify the Inventory page displays (e.g., product list is visible).",
+      "16. (Optional) Log out and close the browser."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function fillField(page, placeholder, value) {\n  const input = page.locator(`input[placeholder=\"${placeholder}\"]`);\n  await input.waitFor({ state: 'visible' });\n  await input.clear();\n  await input.fill(value);\n  await expect(input).toHaveValue(value);\n}\n\nexport async function clickButton(page, text) {\n  const button = page.locator(`button:has-text(\"${text}\")`);\n  await button.waitFor({ state: 'visible' });\n  await expect(button).toBeEnabled();\n  await button.click();\n}\n\nexport async function login(page, username, password) {\n  await fillField(page, 'Username', username);\n  await fillField(page, 'Password', password);\n  await clickButton(page, 'Login');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('.inventory_list')).toBeVisible();\n});",
+    "manualSteps": [
+      "1. Open a supported browser (Chrome, Firefox, Edge, Safari).",
+      "2. Navigate to https://www.saucedemo.com/.",
+      "3. Wait until the login form is fully rendered (both inputs and the button are visible).",
+      "4. Locate the input field with the placeholder text \"Username\".",
+      "5. Click inside the Username field to focus it.",
+      "6. Clear any pre-filled text (if present).",
+      "7. Type the exact string standard_user into the Username field.",
+      "8. Verify that the typed value appears correctly without extra spaces.",
+      "9. Locate the input field with the placeholder text \"Password\".",
+      "10. Click inside the Password field to focus it.",
+      "11. Clear any pre-filled text (if present).",
+      "12. Type the exact string secret_sauce into the Password field.",
+      "13. Verify that the typed value is masked (shows bullets/dots).",
+      "14. Locate the Login button (text equals \"Login\").",
+      "15. Verify the Login button is enabled.",
+      "16. Click the Login button.",
+      "17. Wait for the browser URL to change to https://www.saucedemo.com/inventory.html.",
+      "18. Verify that the new page title contains \"Swag Labs\".",
+      "19. Verify that at least one inventory item is visible on the page.",
+      "20. Capture a screenshot of the inventory page for evidence (optional)."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "/**\n * utils.js – reusable Playwright helpers for Swag Labs\n */\n\n/**\n * Logs a user into Swag Labs.\n * @param {import('@playwright/test').Page} page – Playwright page object\n * @param {string} username – username to enter\n * @param {string} password – password to enter\n */\nexport async function login(page, username, password) {\n  const userInput = page.locator('input[placeholder=\"Username\"]');\n  const passInput = page.locator('input[placeholder=\"Password\"]');\n  const loginBtn  = page.locator('input[type=\"submit\"][value=\"Login\"]');\n\n  await userInput.clear();\n  await userInput.fill(username);\n  await passInput.clear();\n  await passInput.fill(password);\n  await loginBtn.click();\n}\n\n/**\n * Logs a user out of Swag Labs (from any internal page).\n * @param {import('@playwright/test').Page} page – Playwright page object\n */\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('a[data-test=\"logout-sidebar-link\"]');\n  await page.waitForURL('https://www.saucedemo.com/');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Swag Labs Login', () => {\n  test('successful login with standard_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n\n    // Verify login form is visible\n    await expect(page.locator('input[placeholder=\"Username\"]')).toBeVisible();\n    await expect(page.locator('input[placeholder=\"Password\"]')).toBeVisible();\n    await expect(page.locator('input[type=\"submit\"][value=\"Login\"]')).toBeVisible();\n\n    // Perform login via reusable helper\n    await login(page, 'standard_user', 'secret_sauce');\n\n    // Verify navigation to inventory page\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n\n    // Verify inventory page loaded\n    await expect(page.locator('.title')).toHaveText('Products');\n    await expect(page.locator('.shopping_cart_link')).toBeVisible();\n  });\n});",
+    "manualSteps": [
+      "1. Open a supported browser (Chrome, Edge, Firefox, Safari).",
+      "2. Navigate to https://www.saucedemo.com/ and verify the page loads completely (no 4xx/5xx errors).",
+      "3. Verify the login form is visible by checking the presence of the Username and Password fields and the Login button.",
+      "4. Locate the Username input field (placeholder='Username').",
+      "5. Clear any pre-filled text in the Username field.",
+      "6. Enter the exact text standard_user into the Username field.",
+      "7. Verify the entered text is displayed as asterisks/bullets in the Username field (optional visual check).",
+      "8. Locate the Password input field (placeholder='Password').",
+      "9. Clear any pre-filled text in the Password field.",
+      "10. Enter the exact text secret_sauce into the Password field.",
+      "11. Verify the entered text is masked in the Password field.",
+      "12. Locate the Login button (text='Login').",
+      "13. Click the Login button.",
+      "14. Verify the browser navigates to https://www.saucedemo.com/inventory.html (URL check).",
+      "15. Verify the inventory page loads completely (no 4xx/5xx errors).",
+      "16. Verify the presence of the primary header 'Products' or equivalent to confirm successful login.",
+      "17. Optionally, verify the shopping cart icon is visible to ensure the inventory page is fully rendered.",
+      "18. Logout and close the browser (cleanup)."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n}\n\nexport async function waitForInventoryPage(page) {\n  await page.waitForURL('https://www.saucedemo.com/inventory.html');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('.inventory_list')).toBeVisible();\n});",
+    "manualSteps": [
+      "1. Open a supported browser (Chrome, Edge, Firefox, Safari).",
+      "2. Navigate to https://www.saucedemo.com/.",
+      "3. Wait until the login form is visible (look for the placeholder text 'Username' and 'Password').",
+      "4. Click inside the Username input field to focus it.",
+      "5. Clear any pre-filled text (if present).",
+      "6. Type the exact string standard_user (case-sensitive, no leading/trailing spaces).",
+      "7. Click inside the Password input field to focus it.",
+      "8. Clear any pre-filled text (if present).",
+      "9. Type the exact string secret_sauce (case-sensitive, no leading/trailing spaces).",
+      "10. Click the Login button (text equals 'Login').",
+      "11. Wait for the browser URL to change to https://www.saucedemo.com/inventory.html.",
+      "12. Verify that the new page title contains 'Swag Labs' or similar expected text.",
+      "13. Verify that at least one inventory item is displayed (confirming successful login).",
+      "14. Log the test result as PASS if all steps complete without error; otherwise FAIL with reason."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "/**\n * utils.js – reusable helpers for Swag Labs tests\n */\n\n/**\n * Perform a full login flow on https://www.saucedemo.com/\n * @param {import('@playwright/test').Page} page\n * @param {string} username\n * @param {string} password\n */\nexport async function login(page, username, password) {\n  // Locators are resilient to DOM churn: prefer role+label when possible\n  const usernameInput = page.getByRole('textbox', { name: /username/i });\n  const passwordInput = page.getByRole('textbox', { name: /password/i });\n  const loginButton   = page.getByRole('button', { name: /login/i });\n\n  await usernameInput.fill(username);\n  await passwordInput.fill(password);\n  await loginButton.click();\n}\n\n/**\n * Wait for the inventory page to load and return the Products heading locator\n * @param {import('@playwright/test').Page} page\n */\nexport async function waitForInventoryPage(page) {\n  await page.waitForURL('https://www.saucedemo.com/inventory.html');\n  return page.getByRole('heading', { name: /products/i });\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user should land on inventory page', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n});",
+    "manualSteps": [
+      "1. Open a supported browser (Chrome, Edge, Firefox, or Safari).",
+      "2. Navigate to https://www.saucedemo.com/ and verify the Swag Labs login page loads completely (logo, username field, password field, and Login button are visible).",
+      "3. Locate the Username input field (placeholder text = \"Username\").",
+      "4. Click inside the Username field to focus it.",
+      "5. Type the exact string standard_user (no leading/trailing spaces).",
+      "6. Verify the typed value appears in the field.",
+      "7. Locate the Password input field (placeholder text = \"Password\").",
+      "8. Click inside the Password field to focus it.",
+      "9. Type the exact string secret_sauce (masked characters are expected).",
+      "10. Verify the typed value is masked (bullets/asterisks).",
+      "11. Locate the Login button (text = \"Login\").",
+      "12. Click the Login button.",
+      "13. Wait for the browser to finish navigation.",
+      "14. Verify the URL in the address bar is exactly https://www.saucedemo.com/inventory.html.",
+      "15. Verify the inventory page contains the primary heading \"Products\" (or equivalent) to confirm successful login."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function fillField(page, selector, value) {\n  const field = page.locator(selector);\n  await field.clear();\n  await field.fill(value);\n  await field.press('Tab'); // trigger blur to ensure value sticks\n}\n\nexport async function login(page, username, password) {\n  await fillField(page, '[data-test=\"username\"]', username);\n  await fillField(page, '[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n});",
+    "manualSteps": [
+      "1. Open a supported browser (Chrome, Edge, Firefox, or Safari).",
+      "2. Navigate to https://www.saucedemo.com/ and verify the page loads successfully (HTTP 200).",
+      "3. Verify the login form is visible within 5 seconds.",
+      "4. Locate the username input field using its placeholder attribute 'Username'.",
+      "5. Clear any pre-filled text in the username field.",
+      "6. Type the exact string 'standard_user' into the username field.",
+      "7. Verify the entered text equals 'standard_user'.",
+      "8. Locate the password input field using its placeholder attribute 'Password'.",
+      "9. Clear any pre-filled text in the password field.",
+      "10. Type the exact string 'secret_sauce' into the password field.",
+      "11. Verify the password field masks the entered characters.",
+      "12. Locate the Login button via its text content 'Login'.",
+      "13. Click the Login button.",
+      "14. Verify the browser navigates to https://www.saucedemo.com/inventory.html within 5 seconds.",
+      "15. Verify the inventory page displays the primary heading 'Products'.",
+      "16. Verify no error messages appear on the new page.",
+      "17. Capture a screenshot of the inventory page for evidence.",
+      "18. Log the test result as 'Pass' if all steps succeed, otherwise 'Fail'."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function fillField(page, selector, value) {\n  const field = page.locator(selector);\n  await field.clear();\n  await field.fill(value);\n  await expect(field).toHaveValue(value);\n}\n\nexport async function login(page, username, password) {\n  await fillField(page, 'input[data-test=\"username\"]', username);\n  await fillField(page, 'input[data-test=\"password\"]', password);\n  await page.locator('input[data-test=\"login-button\"]').click();\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user should land on inventory page', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('#inventory_container')).toBeVisible();\n});",
+    "manualSteps": [
+      "1. Open a clean browser instance (Chrome, Edge, Firefox, or Safari).",
+      "2. Navigate to https://www.saucedemo.com/ and verify the page loads completely (HTTP 200, no console errors).",
+      "3. Locate the Username field by its placeholder text \"Username\" (CSS selector: input[data-test='username']).",
+      "4. Clear any pre-filled text in the Username field (if present).",
+      "5. Type the exact string standard_user into the Username field (no leading/trailing spaces).",
+      "6. Verify the typed value is visible and matches standard_user.",
+      "7. Locate the Password field by its placeholder text \"Password\" (CSS selector: input[data-test='password']).",
+      "8. Clear any pre-filled text in the Password field (if present).",
+      "9. Type the exact string secret_sauce into the Password field (value will be masked).",
+      "10. Verify the Password field is not empty (masking prevents visual verification of exact text).",
+      "11. Locate the Login button by its text \"Login\" (CSS selector: input[data-test='login-button']).",
+      "12. Click the Login button and verify it becomes disabled or shows a loading spinner (if applicable).",
+      "13. Wait for the URL to change to https://www.saucedemo.com/inventory.html (explicit wait up to 10 s).",
+      "14. Verify the inventory page loads completely (HTTP 200, no console errors, page title \"Swag Labs\").",
+      "15. Confirm the inventory container (div#inventory_container) is visible and contains at least one product card.",
+      "16. Log out via the burger-menu ➜ Logout to return the session to a clean state (optional but recommended for repeatability)."
     ]
   }
 ]
