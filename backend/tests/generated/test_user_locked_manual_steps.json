@@ -1,0 +1,13 @@
+[
+  "1. Open a browser and navigate to https://www.saucedemo.com/",
+  "2. Wait until the login form is fully rendered (both inputs and the login button are visible)",
+  "3. Locate the Username input field using its placeholder text 'Username'",
+  "4. Click inside the Username field and type the exact string locked_out_user",
+  "5. Locate the Password input field using its placeholder text 'Password'",
+  "6. Click inside the Password field and type the exact string secret_sauce",
+  "7. Locate the Login button and click it",
+  "8. Wait for the error container to appear on the page",
+  "9. Verify that the error container is visible",
+  "10. Verify that the error text is exactly 'Epic sadface: Sorry, this user has been locked out.'",
+  "11. (Optional) Take a screenshot of the error state for evidence"
+]

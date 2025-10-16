@@ -373,5 +373,206 @@
       "15. Confirm the inventory container (div#inventory_container) is visible and contains at least one product card.",
       "16. Log out via the burger-menu ➜ Logout to return the session to a clean state (optional but recommended for repeatability)."
     ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.getByPlaceholder('Username').fill(username);\n  await page.getByPlaceholder('Password').fill(password);\n  await page.getByRole('button', { name: 'Login' }).click();\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login with standard_user', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('.inventory_item')).toHaveCountGreaterThan(0);\n});",
+    "manualSteps": [
+      "1. Open a new browser tab and navigate to https://www.saucedemo.com/",
+      "2. Wait until the login form is fully rendered (both username and password fields are visible)",
+      "3. Locate the username input field by its placeholder text 'Username'",
+      "4. Clear any pre-filled value in the username field",
+      "5. Type the exact string 'standard_user' into the username field",
+      "6. Locate the password input field by its placeholder text 'Password'",
+      "7. Clear any pre-filled value in the password field",
+      "8. Type the exact string 'secret_sauce' into the password field",
+      "9. Locate the Login button (text equals 'Login')",
+      "10. Click the Login button",
+      "11. Wait for the browser to finish navigation",
+      "12. Verify the current URL is https://www.saucedemo.com/inventory.html",
+      "13. Verify that the inventory page displays at least one product card to confirm successful login"
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login with standard_user', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n});",
+    "manualSteps": [
+      "1. Open a clean browser instance (Chrome/Firefox/Edge) in incognito/private mode to ensure no cached data.",
+      "2. Navigate to https://www.saucedemo.com/ and wait until the page fully loads (verify the URL and page title 'Swag Labs').",
+      "3. Locate the Username input field (placeholder='Username') and confirm it is empty and enabled.",
+      "4. Enter the exact text standard_user into the Username field (no leading/trailing spaces).",
+      "5. Locate the Password input field (placeholder='Password') and confirm it is masked and enabled.",
+      "6. Enter the exact text secret_sauce into the Password field.",
+      "7. Locate the Login button and confirm it is visible and enabled.",
+      "8. Click the Login button.",
+      "9. Wait for the browser to complete navigation and verify the new URL is https://www.saucedemo.com/inventory.html.",
+      "10. Confirm the inventory page displays the page heading 'Products' and at least one inventory item card is present.",
+      "11. Capture a screenshot of the inventory page for evidence.",
+      "12. Log out (via the burger menu → Logout) to return to the login page and reset state for future tests."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await expect(page).toHaveTitle(/Swag Labs/);\n\n  await login(page, 'standard_user', 'secret_sauce');\n\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('text=Products')).toBeVisible();\n});",
+    "manualSteps": [
+      "1. Open a clean browser instance (Chrome/Firefox/Edge) in incognito/private mode.",
+      "2. Navigate to https://www.saucedemo.com/ and confirm the page title is 'Swag Labs'.",
+      "3. Verify that the Username field (placeholder='Username') is visible and enabled.",
+      "4. Enter the exact text standard_user into the Username field and confirm the value is displayed.",
+      "5. Verify that the Password field (placeholder='Password') is visible and enabled.",
+      "6. Enter the exact text secret_sauce into the Password field (value should be masked).",
+      "7. Verify that the Login button is visible and enabled.",
+      "8. Click the Login button.",
+      "9. Wait for the browser URL to change to https://www.saucedemo.com/inventory.html.",
+      "10. Confirm the new page title is 'Swag Labs' and the heading 'Products' is visible.",
+      "11. Log the test result as PASS if all assertions succeed; otherwise, capture a screenshot and log as FAIL."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n  await expect(page).toHaveURL('https://www.saucedemo.com/');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toContainText('Products');\n});",
+    "manualSteps": [
+      "1. Open a clean browser instance (Chrome/Firefox/Edge) in incognito/private mode.",
+      "2. Navigate to https://www.saucedemo.com/ and confirm the page title is 'Swag Labs'.",
+      "3. Verify that the Username input field is visible and has the placeholder text 'Username'.",
+      "4. Enter the exact text standard_user into the Username field and confirm the value is entered correctly.",
+      "5. Verify that the Password input field is visible and has the placeholder text 'Password'.",
+      "6. Enter the exact text secret_sauce into the Password field (masking should be applied).",
+      "7. Verify that the Login button is visible and enabled.",
+      "8. Click the Login button and observe that no error messages appear.",
+      "9. Wait for the browser URL to change to https://www.saucedemo.com/inventory.html.",
+      "10. Confirm that the new page contains the text 'Products' in the header and at least one inventory item is displayed.",
+      "11. Log the test result as PASS if all steps complete without deviation; otherwise, capture console errors and UI messages for investigation."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Login flow', () => {\n  test('successful login with standard_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  });\n});",
+    "manualSteps": [
+      "1. Open a clean browser instance (Chrome/Firefox/Edge) in private/incognito mode.",
+      "2. Navigate to https://www.saucedemo.com/ and wait until the page finishes loading (verify the Saucedemo logo is visible).",
+      "3. Locate the Username input field (placeholder = \"Username\") and confirm it is empty and enabled.",
+      "4. Enter the exact text standard_user into the Username field (no leading/trailing spaces).",
+      "5. Locate the Password input field (placeholder = \"Password\") and confirm it is masked and enabled.",
+      "6. Enter the exact text secret_sauce into the Password field (no leading/trailing spaces).",
+      "7. Locate the Login button and confirm it is visible and enabled.",
+      "8. Click the Login button.",
+      "9. Wait for the browser to complete navigation and verify the URL is now https://www.saucedemo.com/inventory.html.",
+      "10. Confirm the inventory page header (e.g., \"Products\") is displayed to ensure successful login."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n  await page.waitForURL('**/inventory.html');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n  await page.waitForURL('**/');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Login flow', () => {\n  test('successful login with standard_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n    await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n  });\n});",
+    "manualSteps": [
+      "1. Open a clean browser instance (Chrome/Firefox/Edge) in incognito/private mode.",
+      "2. Navigate to https://www.saucedemo.com/ and confirm the page title is 'Swag Labs'.",
+      "3. Verify that the Username field (placeholder='Username') is visible and enabled.",
+      "4. Enter the exact text standard_user into the Username field and confirm the value is displayed.",
+      "5. Verify that the Password field (placeholder='Password') is visible and enabled.",
+      "6. Enter the exact text secret_sauce into the Password field (asterisks should mask the characters).",
+      "7. Verify that the Login button is visible, enabled, and labeled 'Login'.",
+      "8. Click the Login button and wait for the browser to process the request.",
+      "9. Confirm that the URL changes to https://www.saucedemo.com/inventory.html.",
+      "10. Verify that the inventory page header 'Products' is displayed, indicating a successful login."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n  await page.waitForURL('https://www.saucedemo.com/');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Login Flow', () => {\n  test('successful login with standard_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await expect(page).toHaveTitle(/Swag Labs/);\n\n    await login(page, 'standard_user', 'secret_sauce');\n\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n    await expect(page.locator('.title')).toContainText('Products');\n  });\n});",
+    "manualSteps": [
+      "1. Open a clean browser instance (Chrome/Firefox/Edge) in incognito/private mode.",
+      "2. Navigate to https://www.saucedemo.com/ and verify the page title contains 'Swag Labs'.",
+      "3. Locate the Username input field (placeholder='Username') and confirm it is empty and enabled.",
+      "4. Enter the exact text standard_user into the Username field and verify the value is displayed.",
+      "5. Locate the Password input field (placeholder='Password') and confirm it is empty and masked.",
+      "6. Enter the exact text secret_sauce into the Password field and verify the value is masked.",
+      "7. Locate the Login button and confirm it is visible and enabled.",
+      "8. Click the Login button and verify no JavaScript errors appear in the console.",
+      "9. Wait for the URL to change to https://www.saucedemo.com/inventory.html.",
+      "10. Confirm the new page contains the text 'Products' in the header and at least one inventory item is displayed.",
+      "11. Capture a screenshot of the inventory page for evidence.",
+      "12. Log out (via the burger menu → Logout) to return to the login page and verify the fields are cleared."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"][value=\"Login\"], input[type=\"submit\"][data-test=\"login-button\"], button:has-text(\"Login\")');\n  await page.waitForURL('**/inventory.html');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n});",
+    "manualSteps": [
+      "1. Open a clean browser instance (Chrome/Firefox/Edge) in incognito/private mode.",
+      "2. Navigate to https://www.saucedemo.com/ and wait until the page finishes loading (check that the URL is correct and the page title contains 'Swag Labs').",
+      "3. Verify that the 'Username' input field is visible and enabled (placeholder text must be 'Username').",
+      "4. Enter the exact text standard_user into the Username field (no leading/trailing spaces).",
+      "5. Verify that the 'Password' input field is visible and enabled (placeholder text must be 'Password').",
+      "6. Enter the exact text secret_sauce into the Password field (no leading/trailing spaces).",
+      "7. Verify that the Login button is visible, enabled, and has the text 'Login'.",
+      "8. Click the Login button (left-click, no keyboard shortcuts).",
+      "9. Wait for the browser to complete navigation and confirm the new URL is https://www.saucedemo.com/inventory.html.",
+      "10. Verify that the inventory page is fully rendered (e.g., page title contains 'Products' and at least one inventory item is displayed).",
+      "11. Log the test result as 'Pass' if all steps complete without errors; otherwise attach screenshots and console logs."
+    ]
+  },
+  {
+    "number": 1,
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toContainText('Products');\n});",
+    "manualSteps": [
+      "1. Open a browser and navigate to https://www.saucedemo.com/",
+      "2. Verify that the page title is 'Swag Labs' and both the Username and Password fields are visible.",
+      "3. Click inside the Username input field (placeholder='Username').",
+      "4. Type the exact text standard_user into the Username field and confirm the value is entered correctly.",
+      "5. Click inside the Password input field (placeholder='Password').",
+      "6. Type the exact text secret_sauce into the Password field (masked characters are expected).",
+      "7. Click the Login button (text='Login').",
+      "8. Wait for the browser to finish loading the next page.",
+      "9. Verify the URL is now https://www.saucedemo.com/inventory.html.",
+      "10. Confirm that the inventory page displays the products header (e.g., 'Products') to ensure a successful login."
+    ]
+  },
+  {
+    "number": 2,
+    "title": "Test User Locked",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/2",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[data-test=\"login-button\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('locked-out user sees correct error message', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'locked_out_user', 'secret_sauce');\n  const errorLocator = page.locator('[data-test=\"error\"]');\n  await expect(errorLocator).toBeVisible();\n  await expect(errorLocator).toHaveText('Epic sadface: Sorry, this user has been locked out.');\n});",
+    "manualSteps": [
+      "1. Open a browser and navigate to https://www.saucedemo.com/",
+      "2. Wait until the login form is fully rendered (both inputs and the login button are visible)",
+      "3. Locate the Username input field using its placeholder text 'Username'",
+      "4. Click inside the Username field and type the exact string locked_out_user",
+      "5. Locate the Password input field using its placeholder text 'Password'",
+      "6. Click inside the Password field and type the exact string secret_sauce",
+      "7. Locate the Login button and click it",
+      "8. Wait for the error container to appear on the page",
+      "9. Verify that the error container is visible",
+      "10. Verify that the error text is exactly 'Epic sadface: Sorry, this user has been locked out.'",
+      "11. (Optional) Take a screenshot of the error state for evidence"
+    ]
   }
 ]

@@ -1,7 +1,8 @@
 import fs from "fs"
 import path from "path"
+import { uploadAllGeneratedTestsToGitHub, uploadTestFileToGitHub } from "./githubFileService.js";
 
-export function saveGeneratedTestsAsFiles() {
+export async function saveGeneratedTestsAsFiles() {
   const jsonPath = path.join(process.cwd(), "generated_tests.json")
   if (!fs.existsSync(jsonPath)) {
     throw new Error("Nenhum ficheiro generated_tests.json encontrado — gera primeiro os testes.")
@@ -44,11 +45,13 @@ export function saveGeneratedTestsAsFiles() {
       fs.writeFileSync(stepsPath, JSON.stringify(tc.manualSteps, null, 2), "utf-8")
     }
   })
-
-  return { message: "Test files saved successfully", count: data.length }
+  console.log("📤 Uploading generated files to GitHub...");
+  const results = await uploadAllGeneratedTestsToGitHub();
+  console.log("✅ Upload completo:", results.map((r) => r.url || r.error));
+  return { message: "Test files saved successfully", count: data.length,uploaded: results }
 }
 
-export function saveTestFilesForSingleCase(id) {
+export async function saveTestFilesForSingleCase(id) {
   const jsonPath = path.join(process.cwd(), "generated_tests.json");
   if (!fs.existsSync(jsonPath))
     throw new Error("Nenhum ficheiro generated_tests.json encontrado.");
@@ -113,12 +116,36 @@ export function saveTestFilesForSingleCase(id) {
     fs.writeFileSync(stepsPath, JSON.stringify(tc.manualSteps, null, 2), "utf-8");
   }
 
-  return {
-    message: `✅ Test files for ticket #${id} saved successfully`,
-    title: tc.title,
-    saved: {
-      test: filePath,
-      utils: utilsPath,
-    },
-  };
+  // 📤 Enviar o ficheiro e utils para o GitHub
+  console.log(`📤 A enviar ficheiros do teste #${id} para o GitHub...`);
+  const repoPathTest = `tests/generated/${filename}.spec.js`;
+  const repoPathUtils = `tests/utils/utils.js`;
+
+  try {
+    const testUpload = await uploadTestFileToGitHub(filePath, repoPathTest, `Add/Update test for issue #${id}: ${tc.title}`);
+    const utilsUpload = await uploadTestFileToGitHub(utilsPath, repoPathUtils, `Update utils.js for test #${id}`);
+
+    console.log("✅ Upload concluído:", {
+      test: testUpload.content.html_url,
+      utils: utilsUpload.content.html_url,
+    });
+
+    return {
+      message: `✅ Test files for ticket #${id} saved and uploaded successfully`,
+      title: tc.title,
+      uploaded: {
+        /*test: testUpload.data.content.html_url,
+        utils: utilsUpload.data.content.html_url,*/
+          test: testUpload.content.html_url,
+    utils: utilsUpload.content.html_url,
+      },
+    };
+  } catch (err) {
+    console.error("❌ Erro ao enviar para o GitHub:", err.message);
+    return {
+      message: `⚠️ Test saved locally but failed to upload to GitHub.`,
+      title: tc.title,
+      error: err.message,
+    };
+  }
 }
