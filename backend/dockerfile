@@ -1,0 +1,16 @@
+# Usa a imagem Playwright oficial (inclui Node, npm, Playwright e browsers)
+FROM mcr.microsoft.com/playwright:v1.46.0-jammy
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+# Os browsers já vêm instalados na imagem base, mas este comando reforça
+RUN npx playwright install --with-deps
+
+EXPOSE 10000
+
+CMD ["npm", "run", "start"]
