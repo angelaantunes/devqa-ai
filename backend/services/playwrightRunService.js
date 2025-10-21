@@ -164,7 +164,7 @@ export async function runRemotePlaywrightTest(testNumber) {
 
   // 1. Dispara o workflow
   const dispatchResp = await fetch(
-    `https://api.github.com/repos/${repo}/actions/workflows/run-single-test.yml/dispatches`,
+    `https://api.github.com/repos/${repo}/actions/workflows/.github%2Fworkflows%2Fplaywright.yml/dispatches`,
     {
       method: "POST",
       headers: {
