@@ -65,16 +65,14 @@ jobs:
           fi
           ls -la published_report
 
-      - name: Upload artifact for Pages
-        uses: actions/upload-pages-artifact@v1
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: published_report
 
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v1
+        uses: actions/deploy-pages@v4
 
       - name: Output public URL
         run: |
-          echo "Report published as: https://${{ github.repository_owner }}.github.io/${{ github.repository }}/${
-            { github.event.inputs.filename }
-          }" || true
+          echo "Report published as: https://${{ github.repository_owner }}.github.io/${{ github.repository }}/${{ github.event.inputs.filename }}.html"
