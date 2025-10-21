@@ -1,4 +1,4 @@
-import { runPlaywrightTests, runSinglePlaywrightTest  } from '../services/playwrightRunService.js';
+import { runPlaywrightTests, runSinglePlaywrightTest, runRemotePlaywrightTest  } from '../services/playwrightRunService.js';
 import { uploadTestFileToGitHub, uploadAllGeneratedTestsToGitHub } from '../services/githubFileService.js';
 import { dispatchAndWaitForWorkflow } from "../services/githubWorkflowService.js";
 import fs from "fs"
