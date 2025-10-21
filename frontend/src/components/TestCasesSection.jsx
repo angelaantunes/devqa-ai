@@ -102,59 +102,34 @@ function TestCasesSection({ testCases: initialTestCases }) {
 
  const handleRunTest = async (id) => {
   try {
-    // mostra estado de loading
-    setTestResults((prev) => ({
-      ...prev,
-      [id]: { loading: true },
-    }));
+    setTestResults((prev) => ({ ...prev, [id]: { loading: true } }));
 
     const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`);
 
-    const resultData = {
-      success: true,
-      stdout: res.data.stdout || "",
-      stderr: res.data.stderr || "",
-      reportPath: res.data.reportPath || null,
-    };
-
-    // atualiza estado na página
+    const payload = res.data;
     setTestResults((prev) => ({
       ...prev,
-      [id]: resultData,
+      [id]: {
+        loading: false,
+        success: payload.conclusion === "success",
+        stdout: payload.stdout || "",
+        stderr: payload.stderr || "",
+        reportUrl: payload.reportUrl || null,
+        runUrl: payload.runUrl || null,
+      },
     }));
 
-    // mostra também pop-up com o resultado (como dantes)
-    alert(
-      `✅ Test for ticket ${id} executed!\n\n` +
-      `--- STDOUT ---\n${resultData.stdout || "No output"}\n\n` +
-      (resultData.stderr
-        ? `--- STDERR ---\n${resultData.stderr}`
-        : "")
-    );
+    alert(`✅ Test finished: ${payload.conclusion}\n\nReport: ${payload.reportUrl || "publishing... (may take a minute)"}`);
 
-    // Se quiseres apenas logar o caminho do relatório:
-    if (res.data.reportPath) {
-      console.log("📄 Report available at:", res.data.reportPath);
+    if (payload.reportUrl) {
+      window.open(payload.reportUrl, "_blank");
+    } else if (payload.runUrl) {
+      window.open(payload.runUrl, "_blank");
     }
-
   } catch (err) {
     console.error(err);
-
-    const errorData = {
-      success: false,
-      stdout: "",
-      stderr: err.response?.data?.stderr || err.message,
-    };
-
-    setTestResults((prev) => ({
-      ...prev,
-      [id]: errorData,
-    }));
-
-    alert(
-      `❌ Error running test for ticket ${id}\n\n` +
-      `${errorData.stderr}`
-    );
+    alert("Error while triggering remote test: " + (err.response?.data?.error || err.message));
+    setTestResults((prev) => ({ ...prev, [id]: { loading: false, error: err.message } }));
   }
 };
   if (!testCases.length) return null

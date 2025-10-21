@@ -155,3 +155,39 @@ export function runSinglePlaywrightTest(testNumber) {
     }
   });
 }
+
+export async function runRemotePlaywrightTest(testNumber) {
+  const repo = process.env.GITHUB_REPO; // ex: 'angelaantunes/devqa-ai'
+  const token = process.env.GITHUB_TOKEN; // token com permissão para Actions
+
+  console.log(`🚀 Disparar workflow remoto para teste #${testNumber}`);
+
+  // 1. Dispara o workflow
+  const dispatchResp = await fetch(
+    `https://api.github.com/repos/${repo}/actions/workflows/run-single-test.yml/dispatches`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+      },
+      body: JSON.stringify({
+        ref: "main",
+        inputs: { testId: testNumber.toString() },
+      }),
+    }
+  );
+
+  if (!dispatchResp.ok) {
+    const errText = await dispatchResp.text();
+    throw new Error(`Falha ao disparar workflow: ${errText}`);
+  }
+
+  console.log("✅ Workflow dispatch enviado com sucesso");
+
+  return {
+    message: `Teste #${testNumber} enviado para execução no GitHub Actions`,
+    success: true,
+    runUrl: `https://github.com/${repo}/actions`, // link genérico
+  };
+}

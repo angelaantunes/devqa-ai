@@ -1,0 +1,79 @@
+# .github/workflows/run-playwright.yml
+name: Run Playwright Test and Publish Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      filename:
+        description: 'Playwright test filename (e.g. test_login_successful.spec.js)'
+        required: true
+      issue_number:
+        description: 'Optional issue number'
+        required: false
+    # allow manual trigger from UI and API
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  run-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run selected Playwright test (generate HTML report)
+        id: run_tests
+        run: |
+          echo "Running test: ${{ github.event.inputs.filename }}"
+          # ensure file exists
+          if [ ! -f "tests/generated/${{ github.event.inputs.filename }}" ]; then
+            echo "ERROR: test file not found: tests/generated/${{ github.event.inputs.filename }}"
+            exit 2
+          fi
+          # run the test, output html to playwright-report/
+          npx playwright test "tests/generated/${{ github.event.inputs.filename }}" --reporter=html --output=playwright-report || true
+          # ensure we have an index
+          if [ ! -f playwright-report/index.html ]; then
+            echo "No playwright-report/index.html produced"
+            # still continue — will fail later if desired
+          fi
+
+      - name: Prepare pages artifact dir
+        run: |
+          rm -rf published_report || true
+          mkdir -p published_report
+          # copy index to a named file so we can address it by filename
+          if [ -f playwright-report/index.html ]; then
+            cp playwright-report/index.html published_report/${{ github.event.inputs.filename }}.html
+          else
+            echo "<html><body><h1>No report generated</h1></body></html>" > published_report/${{ github.event.inputs.filename }}.html
+          fi
+          ls -la published_report
+
+      - name: Upload artifact for Pages
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: published_report
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v1
+
+      - name: Output public URL
+        run: |
+          echo "Report published as: https://${{ github.repository_owner }}.github.io/${{ github.repository }}/${
+            { github.event.inputs.filename }
+          }" || true
