@@ -10,7 +10,6 @@ on:
       issue_number:
         description: 'Optional issue number'
         required: false
-    # allow manual trigger from UI and API
 
 permissions:
   actions: write
@@ -19,8 +18,31 @@ permissions:
   id-token: write
 
 jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: ./backend
+      - name: Run backend tests
+        run: npm test
+        working-directory: ./backend
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: ./frontend
+      - name: Run frontend build
+        run: npm run build
+        working-directory: ./frontend
+
   run-and-publish:
     runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]  # espera pelos jobs anteriores para correr
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,24 +62,19 @@ jobs:
         id: run_tests
         run: |
           echo "Running test: ${{ github.event.inputs.filename }}"
-          # ensure file exists
           if [ ! -f "tests/generated/${{ github.event.inputs.filename }}" ]; then
             echo "ERROR: test file not found: tests/generated/${{ github.event.inputs.filename }}"
             exit 2
           fi
-          # run the test, output html to playwright-report/
           npx playwright test "tests/generated/${{ github.event.inputs.filename }}" --reporter=html --output=playwright-report || true
-          # ensure we have an index
           if [ ! -f playwright-report/index.html ]; then
             echo "No playwright-report/index.html produced"
-            # still continue — will fail later if desired
           fi
 
       - name: Prepare pages artifact dir
         run: |
           rm -rf published_report || true
           mkdir -p published_report
-          # copy index to a named file so we can address it by filename
           if [ -f playwright-report/index.html ]; then
             cp playwright-report/index.html published_report/${{ github.event.inputs.filename }}.html
           else
