@@ -156,15 +156,15 @@ export function runSinglePlaywrightTest(testNumber) {
   });
 }
 
-export async function runRemotePlaywrightTest(testNumber) {
-  const repo = process.env.GITHUB_REPO; // ex: 'angelaantunes/devqa-ai'
-  const token = process.env.GITHUB_TOKEN; // token com permissão para Actions
+async function runRemotePlaywrightTest(testName) {
+  const repo = process.env.GITHUB_REPO;  // ex: 'usuario/repositorio'
+  const token = process.env.GITHUB_TOKEN;
 
-  console.log(`🚀 Disparar workflow remoto para teste #${testNumber}`);
+  console.log(`🚀 Disparar workflow para teste: ${testName}`);
 
-  // 1. Dispara o workflow
-  const dispatchResp = await fetch(
-    `https://api.github.com/repos/${repo}/actions/workflows/.github%2Fworkflows%2Fplaywright.yml/dispatches`,
+  // 1. Disparar o workflow_dispatch
+  let dispatchResp = await fetch(
+    `${GITHUB_API}/repos/${repo}/actions/workflows/run-playwright.yml/dispatches`,
     {
       method: "POST",
       headers: {
@@ -173,21 +173,66 @@ export async function runRemotePlaywrightTest(testNumber) {
       },
       body: JSON.stringify({
         ref: "main",
-        inputs: { filename: testNumber.toString() },
+        inputs: { filename: testName }
       }),
     }
   );
 
   if (!dispatchResp.ok) {
-    const errText = await dispatchResp.text();
-    throw new Error(`Falha ao disparar workflow: ${errText}`);
+    const text = await dispatchResp.text();
+    throw new Error(`Erro ao disparar workflow: ${text}`);
+  }
+  console.log("✅ Workflow disparado com sucesso");
+
+  // 2. Polling para encontrar a run
+  let runId;
+  const maxPolls = 30;
+  let polls = 0;
+  while (!runId && polls < maxPolls) {
+    polls++;
+    const runsResp = await fetch(
+      `${GITHUB_API}/repos/${repo}/actions/runs?event=workflow_dispatch&branch=main`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    const data = await runsResp.json();
+    if (data.workflow_runs && data.workflow_runs.length > 0) {
+      runId = data.workflow_runs[0].id;
+      break;
+    }
+    await new Promise((res) => setTimeout(res, 2000)); // espera 2s
+  }
+  if (!runId) throw new Error("Não foi possível encontrar workflow run");
+
+  console.log(`🔎 Encontrado run id: ${runId}`);
+
+  // 3. Polling para aguardar conclusão do run
+  let conclusion = null;
+  while (conclusion === null && polls < maxPolls) {
+    polls++;
+    const runResp = await fetch(
+      `${GITHUB_API}/repos/${repo}/actions/runs/${runId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    const runData = await runResp.json();
+
+    if (runData.status === "completed") {
+      conclusion = runData.conclusion; // success, failure, cancelled, etc
+      break;
+    }
+    await new Promise((res) => setTimeout(res, 5000)); // espera 5s
   }
 
-  console.log("✅ Workflow dispatch enviado com sucesso");
+  if (conclusion === null) throw new Error("Timeout esperando workflow terminar");
+
+  console.log(`✅ Workflow concluído com status: ${conclusion}`);
 
   return {
-    message: `Teste #${testNumber} enviado para execução no GitHub Actions`,
-    success: true,
-    runUrl: `https://github.com/${repo}/actions`, // link genérico
+    testName,
+    conclusion,
+    runUrl: `https://github.com/${repo}/actions/runs/${runId}`,
   };
 }
