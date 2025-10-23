@@ -36,6 +36,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Clean npm cache
+        run: npm cache clean --force
+        working-directory: ./frontend
       - name: Install frontend dependencies
         run: npm install
         working-directory: ./frontend
