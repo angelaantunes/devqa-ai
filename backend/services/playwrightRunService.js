@@ -2,6 +2,8 @@ import { exec } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 
+const GITHUB_API = process.env.GITHUB_API || "https://api.github.com";
+
 export function runPlaywrightTests() {
   return new Promise((resolve, reject) => {
     // Assumindo que o cwd é backend
