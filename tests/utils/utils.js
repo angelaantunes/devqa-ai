@@ -21,3 +21,23 @@ export async function getCartItemPrice(page, index = 0) {
     .nth(index)
     .textContent();
 }
+
+export async function getWebhookSettings(request, token) {
+  const res = await request.get('/webhook/settings/', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  expect(res.ok()).toBeTruthy();
+  return await res.json();
+}
+
+export async function postWebhookSettings(request, token, payload) {
+  const res = await request.post('/webhook/settings/', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    data: payload
+  });
+  expect(res.ok()).toBeTruthy();
+  return await res.json();
+}
