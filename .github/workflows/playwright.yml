@@ -60,9 +60,11 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+        working-directory: ./backend 
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
+        working-directory: ./backend 
 
       - name: Run selected Playwright test (generate HTML report)
         id: run_tests
@@ -76,6 +78,7 @@ jobs:
           if [ ! -f playwright-report/index.html ]; then
             echo "No playwright-report/index.html produced"
           fi
+        working-directory: ./backend 
 
       - name: Prepare pages artifact dir
         run: |
