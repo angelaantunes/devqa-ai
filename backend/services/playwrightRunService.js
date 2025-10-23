@@ -156,7 +156,7 @@ export function runSinglePlaywrightTest(testNumber) {
   });
 }
 
-async function runRemotePlaywrightTest(testName) {
+export async function runRemotePlaywrightTest(testName) {
   const repo = process.env.GITHUB_REPO;  // ex: 'usuario/repositorio'
   const token = process.env.GITHUB_TOKEN;
 
