@@ -166,7 +166,7 @@ export async function runRemotePlaywrightTest(testName) {
 
   // 1. Disparar o workflow_dispatch
   let dispatchResp = await fetch(
-    `${GITHUB_API}/repos/${repo}/actions/workflows/run-playwright.yml/dispatches`,
+    `${GITHUB_API}/repos/${repo}/actions/workflows/playwright.yml/dispatches`,
     {
       method: "POST",
       headers: {
