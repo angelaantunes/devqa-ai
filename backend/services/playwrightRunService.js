@@ -173,7 +173,7 @@ export async function runRemotePlaywrightTest(testNumber) {
       },
       body: JSON.stringify({
         ref: "main",
-        inputs: { testId: testNumber.toString() },
+        inputs: { filename: testNumber.toString() },
       }),
     }
   );
