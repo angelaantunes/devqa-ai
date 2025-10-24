@@ -6,8 +6,6 @@ import { createTestCase, createTestRun } from "../services/practiTestService.js"
 import path from 'path';
 
 
-const path = require('path');
-
 export async function runTestsAndGetReport(req, res) {
   try {
     const result = await runPlaywrightTests()
