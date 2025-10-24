@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import { uploadAllGeneratedTestsToGitHub, uploadTestFileToGitHub } from "./githubFileService.js";
+import { uploadAllGeneratedTestsToGitHub, uploadTestFileToGitHub } from "./githubFileService.js"
 
 export async function saveGeneratedTestsAsFiles() {
   const jsonPath = path.join(process.cwd(), "generated_tests.json")
@@ -45,107 +45,104 @@ export async function saveGeneratedTestsAsFiles() {
       fs.writeFileSync(stepsPath, JSON.stringify(tc.manualSteps, null, 2), "utf-8")
     }
   })
-  console.log("📤 Uploading generated files to GitHub...");
-  const results = await uploadAllGeneratedTestsToGitHub();
-  console.log("✅ Upload completo:", results.map((r) => r.url || r.error));
-  return { message: "Test files saved successfully", count: data.length,uploaded: results }
+  console.log("📤 Uploading generated files to GitHub...")
+  const results = await uploadAllGeneratedTestsToGitHub()
+  console.log(
+    "✅ Upload completo:",
+    results.map((r) => r.url || r.error),
+  )
+  return { message: "Test files saved successfully", count: data.length, uploaded: results }
 }
 
 export async function saveTestFilesForSingleCase(id) {
-  const jsonPath = path.join(process.cwd(), "generated_tests.json");
-  if (!fs.existsSync(jsonPath))
-    throw new Error("Nenhum ficheiro generated_tests.json encontrado.");
+  const jsonPath = path.join(process.cwd(), "generated_tests.json")
+  if (!fs.existsSync(jsonPath)) throw new Error("Nenhum ficheiro generated_tests.json encontrado.")
 
-  const data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+  const data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"))
 
   // 🧭 Encontrar o caso certo pelo número do issue
   const tc = data.find((item) => {
-    const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1];
-    return issueNumber === String(id);
-  });
+    const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1]
+    return issueNumber === String(id)
+  })
 
-  if (!tc)
-    throw new Error(`Test case não encontrado para o número ${id} no ficheiro generated_tests.json.`);
+  if (!tc) throw new Error(`Test case não encontrado para o número ${id} no ficheiro generated_tests.json.`)
 
   // ✨ Código gerado pelo GPT
-  const utilsCode = tc.utilsCode?.trim() || "";
-  let playwrightCode = tc.playwrightCode?.trim() || "";
+  const utilsCode = tc.utilsCode?.trim() || ""
+  let playwrightCode = tc.playwrightCode?.trim() || ""
 
   // 🔧 Corrige import do utils no Playwright code
-  playwrightCode = playwrightCode.replace(
-    /from\s+['"].\/utils[^'"]*['"]/,
-    "from '../utils/utils.js'"
-  );
+  playwrightCode = playwrightCode.replace(/from\s+['"].\/utils[^'"]*['"]/, "from '../utils/utils.js'")
 
   // 🗂️ Diretórios de destino
-  const utilsDir = path.join(process.cwd(), "tests", "utils");
-  const testsDir = path.join(process.cwd(), "tests", "generated");
-  if (!fs.existsSync(utilsDir)) fs.mkdirSync(utilsDir, { recursive: true });
-  if (!fs.existsSync(testsDir)) fs.mkdirSync(testsDir, { recursive: true });
+  const utilsDir = path.join(process.cwd(), "tests", "utils")
+  const testsDir = path.join(process.cwd(), "tests", "generated")
+  if (!fs.existsSync(utilsDir)) fs.mkdirSync(utilsDir, { recursive: true })
+  if (!fs.existsSync(testsDir)) fs.mkdirSync(testsDir, { recursive: true })
 
   // 📘 Guardar utils (sem duplicações)
-  const utilsPath = path.join(utilsDir, "utils.js");
-  let existingUtils = "";
+  const utilsPath = path.join(utilsDir, "utils.js")
+  let existingUtils = ""
   if (fs.existsSync(utilsPath)) {
-    existingUtils = fs.readFileSync(utilsPath, "utf-8");
+    existingUtils = fs.readFileSync(utilsPath, "utf-8")
   }
 
   // Detectar funções novas e não duplicar
-  const newFunctions = [...utilsCode.matchAll(/export\s+(?:async\s+)?function\s+([a-zA-Z0-9_]+)/g)].map(m => m[1]);
-  const missingFunctions = newFunctions.filter(fn => !existingUtils.includes(`function ${fn}(`));
+  const newFunctions = [...utilsCode.matchAll(/export\s+(?:async\s+)?function\s+([a-zA-Z0-9_]+)/g)].map((m) => m[1])
+  const missingFunctions = newFunctions.filter((fn) => !existingUtils.includes(`function ${fn}(`))
 
   if (missingFunctions.length > 0) {
-    const mergedUtils = existingUtils
-      ? `${existingUtils.trim()}\n\n${utilsCode}`
-      : utilsCode;
-    fs.writeFileSync(utilsPath, mergedUtils.trim() + "\n", "utf-8");
+    const mergedUtils = existingUtils ? `${existingUtils.trim()}\n\n${utilsCode}` : utilsCode
+    fs.writeFileSync(utilsPath, mergedUtils.trim() + "\n", "utf-8")
   }
 
   // 🧪 Guardar ficheiro de teste Playwright
   const filename = tc.title
     .toLowerCase()
     .replace(/\s+/g, "_")
-    .replace(/[^a-z0-9_]/g, "");
+    .replace(/[^a-z0-9_]/g, "")
 
-  const filePath = path.join(testsDir, `${filename}.spec.js`);
-  fs.writeFileSync(filePath, playwrightCode, "utf-8");
+  const filePath = path.join(testsDir, `${filename}.spec.js`)
+  fs.writeFileSync(filePath, playwrightCode, "utf-8")
 
   // 🪶 Guardar passos manuais (se existirem)
   if (tc.manualSteps && tc.manualSteps.length) {
-    const stepsPath = path.join(testsDir, `${filename}_manual_steps.json`);
-    fs.writeFileSync(stepsPath, JSON.stringify(tc.manualSteps, null, 2), "utf-8");
+    const stepsPath = path.join(testsDir, `${filename}_manual_steps.json`)
+    fs.writeFileSync(stepsPath, JSON.stringify(tc.manualSteps, null, 2), "utf-8")
   }
 
   // 📤 Enviar o ficheiro e utils para o GitHub
-  console.log(`📤 A enviar ficheiros do teste #${id} para o GitHub...`);
-  const repoPathTest = `tests/generated/${filename}.spec.js`;
-  const repoPathUtils = `tests/utils/utils.js`;
+  console.log(`📤 A enviar ficheiros do teste #${id} (${filename}.spec.js) para o GitHub...`)
+  const repoPathTest = `tests/generated/${filename}.spec.js`
+  const repoPathUtils = `tests/utils/utils.js`
 
   try {
-    const testUpload = await uploadTestFileToGitHub(filePath, repoPathTest, `Add/Update test for issue #${id}: ${tc.title}`);
-    const utilsUpload = await uploadTestFileToGitHub(utilsPath, repoPathUtils, `Update utils.js for test #${id}`);
+    const testUpload = await uploadTestFileToGitHub(filePath, repoPathTest, `Add/Update test for issue #${id}: ${tc.title}`)
+    const utilsUpload = await uploadTestFileToGitHub(utilsPath, repoPathUtils, `Update utils.js for test #${id}`)
 
     console.log("✅ Upload concluído:", {
       test: testUpload.content.html_url,
       utils: utilsUpload.content.html_url,
-    });
+    })
 
+    // ✅ Agora devolve também o filename — essencial para o frontend e run remoto
     return {
       message: `✅ Test files for ticket #${id} saved and uploaded successfully`,
       title: tc.title,
+      filename: `${filename}.spec.js`, // ← devolve o nome exato
       uploaded: {
-        /*test: testUpload.data.content.html_url,
-        utils: utilsUpload.data.content.html_url,*/
-          test: testUpload.content.html_url,
-    utils: utilsUpload.content.html_url,
+        test: testUpload.content.html_url,
+        utils: utilsUpload.content.html_url,
       },
-    };
+    }
   } catch (err) {
-    console.error("❌ Erro ao enviar para o GitHub:", err.message);
+    console.error("❌ Erro ao enviar para o GitHub:", err.message)
     return {
       message: `⚠️ Test saved locally but failed to upload to GitHub.`,
       title: tc.title,
+      filename: `${filename}.spec.js`, // mesmo em erro devolve o nome
       error: err.message,
-    };
+    }
   }
 }
