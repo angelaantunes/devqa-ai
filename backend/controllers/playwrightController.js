@@ -3,6 +3,10 @@ import { uploadTestFileToGitHub, uploadAllGeneratedTestsToGitHub } from "../serv
 import { dispatchAndWaitForWorkflow } from "../services/githubWorkflowService.js"
 import fs from "fs"
 import { createTestCase, createTestRun } from "../services/practiTestService.js"
+import path from 'path';
+
+
+const path = require('path');
 
 export async function runTestsAndGetReport(req, res) {
   try {
