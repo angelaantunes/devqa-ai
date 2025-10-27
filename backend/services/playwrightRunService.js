@@ -217,12 +217,12 @@ export async function runRemotePlaywrightTest(testName) {
 
   // Buscar artifacts e URL do report
   const artifacts = await getArtifacts(runId, repo, token);
-  const reportUrl = findReportUrl(artifacts);
+  const reportUrl = findReportUrl(artifacts, repo);
 
   return {
     testName,
     conclusion,
-    runUrl: `https://github.com/${repo}/actions/runs/${runId}`,
+    runUrl: `https://github.com/${repo}/devqa-ai/actions/runs/${runId}`,
     reportUrl,
   };
 }
@@ -234,7 +234,7 @@ async function getArtifacts(runId, repo, token) {
     Accept: "application/vnd.github+json",
   };
   const resp = await fetch(
-    `https://api.github.com/repos/${repo}/actions/runs/${runId}/artifacts`,
+    `https://api.github.com/repos/${repo}/devqa-ai/actions/runs/${runId}/artifacts`,
     { headers }
   );
   if (!resp.ok) throw new Error(`Erro ao buscar artifacts: ${await resp.text()}`);
@@ -249,5 +249,5 @@ function findReportUrl(artifacts, repo) {
       a.name.includes("github-pages")
   );
   if (!reportArtifact) return null;
-  return `https://github.com/${repo}/actions/artifacts/${reportArtifact.id}`;
+  return `https://api.github.com/repos/${repo}/devqa-ai/actions/artifacts/${reportArtifact.id}`;
 }
