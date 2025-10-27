@@ -159,10 +159,11 @@ export function runSinglePlaywrightTest(testNumber) {
 }
 
 export async function runRemotePlaywrightTest(testName) {
-  const repo = process.env.GITHUB_REPO;
+  const repo = process.env.GITHUB_REPO; // "angelaantunes/devqa-ai"
   const token = process.env.GITHUB_TOKEN;
+  const GITHUB_API = process.env.GITHUB_API || "https://api.github.com";
 
-  // Disparar workflow
+  // Disparar workflow (mantém)
   let dispatchResp = await fetch(
     `${GITHUB_API}/repos/${repo}/actions/workflows/playwright.yml/dispatches`,
     {
@@ -178,7 +179,7 @@ export async function runRemotePlaywrightTest(testName) {
     throw new Error(`Erro ao disparar workflow: ${await dispatchResp.text()}`);
   }
 
-  // Polling para run iniciado
+  // Polling para run iniciado (mantém)
   let runId;
   let polls = 0;
   const maxPolls = 60;
@@ -198,7 +199,7 @@ export async function runRemotePlaywrightTest(testName) {
   }
   if (!runId) throw new Error("Não foi possível encontrar workflow run");
 
-  // Polling até conclusão
+  // Polling até conclusão (mantém)
   let conclusion = null;
   while (conclusion === null && polls < maxPolls) {
     polls++;
@@ -215,20 +216,20 @@ export async function runRemotePlaywrightTest(testName) {
   }
   if (conclusion === null) throw new Error("Timeout aguardando finalização do run");
 
-  // Buscar artifacts e URL do report
+  // Obter artifact
   const artifacts = await getArtifacts(runId, repo, token);
   const reportUrl = findReportUrl(artifacts, repo);
 
   return {
     testName,
     conclusion,
-    runUrl: `https://github.com/${repo}/devqa-ai/actions/runs/${runId}`,
+    runUrl: `https://github.com/${repo}/actions/runs/${runId}`,
     reportUrl,
-    publishedUrl: `https://${repo.split('/')[0]}.github.io/${repo.split('/')[1]}/${testName}.html`
+    publishedUrl: `https://${repo.split('/')[0]}.github.io/${repo.split('/')[1]}/${testName}.html`,
   };
 }
 
-
+// --- mantem estas funções tal como estavam (sem /devqa-ai extra)
 async function getArtifacts(runId, repo, token) {
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -242,6 +243,7 @@ async function getArtifacts(runId, repo, token) {
   const data = await resp.json();
   return data.artifacts;
 }
+
 
 function findReportUrl(artifacts, repo) {
   const reportArtifact = artifacts.find(
