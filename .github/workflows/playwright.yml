@@ -75,6 +75,7 @@ jobs:
             exit 2
           fi
           npx playwright test "tests/generated/${{ github.event.inputs.filename }}" --reporter=html --output=playwright-report || true
+          ls -la playwright-report
           if [ ! -f playwright-report/index.html ]; then
             echo "No playwright-report/index.html produced"
           fi
@@ -96,6 +97,7 @@ jobs:
             echo "<html><body><h1>No report generated</h1></body></html>" > published_report/${{ github.event.inputs.filename }}.html
           fi
           ls -la published_report
+        working-directory: ./backend
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
