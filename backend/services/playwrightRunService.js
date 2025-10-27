@@ -159,12 +159,10 @@ export function runSinglePlaywrightTest(testNumber) {
 }
 
 export async function runRemotePlaywrightTest(testName) {
-  const repo = process.env.GITHUB_REPO;  // ex: 'usuario/repositorio'
+  const repo = process.env.GITHUB_REPO;
   const token = process.env.GITHUB_TOKEN;
 
-  console.log(`🚀 Disparar workflow para teste: ${testName}`);
-
-  // 1. Disparar o workflow_dispatch
+  // Disparar workflow
   let dispatchResp = await fetch(
     `${GITHUB_API}/repos/${repo}/actions/workflows/playwright.yml/dispatches`,
     {
@@ -173,68 +171,83 @@ export async function runRemotePlaywrightTest(testName) {
         Authorization: `Bearer ${token}`,
         Accept: "application/vnd.github+json",
       },
-      body: JSON.stringify({
-        ref: "main",
-        inputs: { filename: testName }
-      }),
+      body: JSON.stringify({ ref: "main", inputs: { filename: testName } }),
     }
   );
-
   if (!dispatchResp.ok) {
-    const text = await dispatchResp.text();
-    throw new Error(`Erro ao disparar workflow: ${text}`);
+    throw new Error(`Erro ao disparar workflow: ${await dispatchResp.text()}`);
   }
-  console.log("✅ Workflow disparado com sucesso");
 
-  // 2. Polling para encontrar a run
+  // Polling para run iniciado
   let runId;
-  const maxPolls = 30;
   let polls = 0;
+  const maxPolls = 60;
+
   while (!runId && polls < maxPolls) {
     polls++;
-    const runsResp = await fetch(
+    const runResp = await fetch(
       `${GITHUB_API}/repos/${repo}/actions/runs?event=workflow_dispatch&branch=main`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      { headers: { Authorization: `Bearer ${token}` } }
     );
-    const data = await runsResp.json();
+    const data = await runResp.json();
     if (data.workflow_runs && data.workflow_runs.length > 0) {
       runId = data.workflow_runs[0].id;
       break;
     }
-    await new Promise((res) => setTimeout(res, 2000)); // espera 2s
+    await new Promise((res) => setTimeout(res, 1000));
   }
   if (!runId) throw new Error("Não foi possível encontrar workflow run");
 
-  console.log(`🔎 Encontrado run id: ${runId}`);
-
-  // 3. Polling para aguardar conclusão do run
+  // Polling até conclusão
   let conclusion = null;
   while (conclusion === null && polls < maxPolls) {
     polls++;
-    const runResp = await fetch(
+    const resp = await fetch(
       `${GITHUB_API}/repos/${repo}/actions/runs/${runId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      { headers: { Authorization: `Bearer ${token}` } }
     );
-    const runData = await runResp.json();
-
+    const runData = await resp.json();
     if (runData.status === "completed") {
-      conclusion = runData.conclusion; // success, failure, cancelled, etc
+      conclusion = runData.conclusion;
       break;
     }
-    await new Promise((res) => setTimeout(res, 5000)); // espera 5s
+    await new Promise((res) => setTimeout(res, 3000));
   }
+  if (conclusion === null) throw new Error("Timeout aguardando finalização do run");
 
-  if (conclusion === null) throw new Error("Timeout esperando workflow terminar");
-
-  console.log(`✅ Workflow concluído com status: ${conclusion}`);
+  // Buscar artifacts e URL do report
+  const artifacts = await getArtifacts(runId, repo, token);
+  const reportUrl = findReportUrl(artifacts);
 
   return {
     testName,
     conclusion,
     runUrl: `https://github.com/${repo}/actions/runs/${runId}`,
+    reportUrl,
   };
+}
+
+
+async function getArtifacts(runId, repo, token) {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+  };
+  const resp = await fetch(
+    `https://api.github.com/repos/${repo}/actions/runs/${runId}/artifacts`,
+    { headers }
+  );
+  if (!resp.ok) throw new Error(`Erro ao buscar artifacts: ${await resp.text()}`);
+  const data = await resp.json();
+  return data.artifacts;
+}
+
+function findReportUrl(artifacts) {
+  const reportArtifact = artifacts.find(
+    (a) =>
+      a.name.includes("playwright-report") ||
+      a.name.includes("github-pages")
+  );
+  if (!reportArtifact) return null;
+  return `https://github.com/${repo}/actions/artifacts/${reportArtifact.id}`;
 }
