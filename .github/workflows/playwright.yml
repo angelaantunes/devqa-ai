@@ -80,6 +80,12 @@ jobs:
           fi
         working-directory: ./backend 
 
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: ./backend/playwright-report
+
       - name: Prepare pages artifact dir
         run: |
           rm -rf published_report || true
