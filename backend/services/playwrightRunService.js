@@ -249,5 +249,5 @@ function findReportUrl(artifacts, repo) {
       a.name.includes("github-pages")
   );
   if (!reportArtifact) return null;
-  return `https://api.github.com/repos/${repo}/devqa-ai/actions/artifacts/${reportArtifact.id}`;
+  return `https://github.com/repos/${repo}/actions/artifacts/${reportArtifact.id}`;
 }
