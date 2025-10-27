@@ -224,6 +224,7 @@ export async function runRemotePlaywrightTest(testName) {
     conclusion,
     runUrl: `https://github.com/${repo}/devqa-ai/actions/runs/${runId}`,
     reportUrl,
+    publishedUrl: `https://${repo.split('/')[0]}.github.io/${repo.split('/')[1]}/${testName}.html`
   };
 }
 
@@ -249,5 +250,5 @@ function findReportUrl(artifacts, repo) {
       a.name.includes("github-pages")
   );
   if (!reportArtifact) return null;
-  return `https://github.com/repos/${repo}/actions/artifacts/${reportArtifact.id}`;
+  return `https://github.com/${repo}/actions/artifacts/${reportArtifact.id}`;
 }
