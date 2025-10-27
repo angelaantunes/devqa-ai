@@ -242,7 +242,7 @@ async function getArtifacts(runId, repo, token) {
   return data.artifacts;
 }
 
-function findReportUrl(artifacts) {
+function findReportUrl(artifacts, repo) {
   const reportArtifact = artifacts.find(
     (a) =>
       a.name.includes("playwright-report") ||
