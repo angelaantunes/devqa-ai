@@ -234,7 +234,7 @@ async function getArtifacts(runId, repo, token) {
     Accept: "application/vnd.github+json",
   };
   const resp = await fetch(
-    `https://api.github.com/repos/${repo}/devqa-ai/actions/runs/${runId}/artifacts`,
+    `https://api.github.com/repos/${repo}/actions/runs/${runId}/artifacts`,
     { headers }
   );
   if (!resp.ok) throw new Error(`Erro ao buscar artifacts: ${await resp.text()}`);
