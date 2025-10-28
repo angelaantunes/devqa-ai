@@ -108,34 +108,52 @@ function TestCasesSection({ testCases: initialTestCases }) {
     }
   }*/
 
- const handleRunTest = async (id) => {
-  try {
-    setTestResults((prev) => ({ ...prev, [id]: { loading: true } }));
+const handleRunTest = async (id) => {
+  setTestResults((prev) => ({ ...prev, [id]: { loading: true } }));
+  let tries = 0;
+  const maxTries = 60;
 
-    const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`);
-    const payload = res.data;
+  while (tries < maxTries) {
+    tries++;
+    try {
+      const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`);
+      const { conclusion, publishedUrl, runUrl } = res.data;
+      if (conclusion === "completed" || conclusion === "success" || conclusion === "failure") {
+        setTestResults((prev) => ({
+          ...prev,
+          [id]: {
+            loading: false,
+            success: conclusion === "success",
+            publishedUrl,
+            runUrl,
+          },
+        }));
+        break;
+      } else {
+        // ainda a correr, aguardar
+        setTestResults((prev) => ({
+          ...prev,
+          [id]: {
+            loading: true,
+            success: false,
+            publishedUrl: null,
+            runUrl,
+          },
+        }));
+      }
+    } catch (err) {
+      console.error(err);
+      setTestResults((prev) => ({ ...prev, [id]: { loading: false, error: err.message } }));
+      break;
+    }
+    await new Promise((res) => setTimeout(res, 3000));
+  }
 
-    setTestResults((prev) => ({
-      ...prev,
-      [id]: {
-        loading: false,
-        success: payload.conclusion === "success",
-        stdout: payload.stdout || "",
-        stderr: payload.stderr || "",
-        reportUrl: payload.reportUrl || null,
-        runUrl: payload.runUrl || null,
-        publishedUrl: payload.publishedUrl || null,
-      },
-    }));
-
-    alert(`✅ Test finished: ${payload.conclusion}\n\nReport: ${payload.publishedUrl || "Gerando... aguarde"}`);
-
-  } catch (err) {
-    console.error(err);
-    alert("Error while triggering remote test: " + (err.response?.data?.error || err.message));
-    setTestResults((prev) => ({ ...prev, [id]: { loading: false, error: err.message } }));
+  if (tries >= maxTries) {
+    alert("Timeout esperando o resultado do teste.");
   }
 };
+
 
 const openReport = (id) => {
   const result = testResults[id];
@@ -285,7 +303,7 @@ const openReport = (id) => {
               </Box>
             )}
 
-            {testResults[tc.number]?.reportPath && (
+            {testResults[tc.number]?.reportUrl && (
               <Button variant="outlined" size="small" color="secondary" sx={{ mb: 2, ml: 2 }} onClick={() => openReport(tc.number)}>
                 📄 View Full Report
               </Button>
