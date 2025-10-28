@@ -1,5 +1,6 @@
 import fs from "fs"
 import path from "path"
+import { fileURLToPath } from "url";
 import { uploadAllGeneratedTestsToGitHub, uploadTestFileToGitHub } from "./githubFileService.js"
 
 export async function saveGeneratedTestsAsFiles() {
@@ -55,17 +56,16 @@ export async function saveGeneratedTestsAsFiles() {
 }
 
 export async function saveTestFilesForSingleCase(id) {
-
-  const path = require("path");
-
+  const __filename = fileURLToPath(import.meta.url)
+  const __dirname = path.dirname(__filename)
   // Determinar raiz do backend, assumindo que este ficheiro está em backend/src ou backend/services
-  const backendRoot = path.resolve(__dirname, ".."); // Ajusta ".." se o teu ficheiro estiver mais fundo
+  const backendRoot = path.resolve(__dirname, "..") // Ajusta ".." se o teu ficheiro estiver mais fundo
 
   // Usa backendRoot em vez de process.cwd()
-  const utilsDir = path.join(backendRoot, "tests", "utils");
-  const testsDir = path.join(backendRoot, "tests", "generated");
+  const utilsDir = path.join(backendRoot, "tests", "utils")
+  const testsDir = path.join(backendRoot, "tests", "generated")
 
-// A partir daqui usa esses paths para guardar os ficheiros
+  // A partir daqui usa esses paths para guardar os ficheiros
 
   const jsonPath = path.join(process.cwd(), "generated_tests.json")
   if (!fs.existsSync(jsonPath)) throw new Error("Nenhum ficheiro generated_tests.json encontrado.")
