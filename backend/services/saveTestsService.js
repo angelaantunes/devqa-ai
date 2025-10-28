@@ -67,7 +67,9 @@ export async function saveTestFilesForSingleCase(id) {
 
   // A partir daqui usa esses paths para guardar os ficheiros
 
-  const jsonPath = path.join(process.cwd(), "generated_tests.json")
+  //const jsonPath = path.join(process.cwd(), "generated_tests.json")
+  const jsonPath = path.join(backendRoot, "generated_tests.json");
+
   if (!fs.existsSync(jsonPath)) throw new Error("Nenhum ficheiro generated_tests.json encontrado.")
 
   const data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"))
