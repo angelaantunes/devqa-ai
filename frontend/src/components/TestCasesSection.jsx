@@ -303,9 +303,13 @@ function TestCasesSection({ testCases: initialTestCases }) {
             )}
 
             {testResults[tc.number]?.publishedUrl && (
-              <Button variant="outlined" size="small" color="secondary" sx={{ mb: 2, ml: 2 }} onClick={() => openReport(tc.number)}>
-                📄 View Full Report
-              </Button>
+              // <Button variant="outlined" size="small" color="secondary" sx={{ mb: 2, ml: 2 }} onClick={() => openReport(tc.number)}>
+              //   📄 View Full Report
+              // </Button>
+              <div style={{ marginTop: "20px" }}>
+                <Typography variant="h6">Relatório do Teste</Typography>
+                <iframe src={testResults[tc.number].publishedUrl} style={{ width: "100%", height: "600px", border: "1px solid #ccc" }} title="Relatório Playwright" />
+              </div>
             )}
           </AccordionDetails>
         </Accordion>
