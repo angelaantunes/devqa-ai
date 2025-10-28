@@ -307,7 +307,7 @@ function TestCasesSection({ testCases: initialTestCases }) {
               //   📄 View Full Report
               // </Button>
               <div style={{ marginTop: "20px" }}>
-                <Typography variant="h6">Relatório do Teste</Typography>
+                <Typography variant="h6">Full Report</Typography>
                 <iframe src={testResults[tc.number].publishedUrl} style={{ width: "100%", height: "600px", border: "1px solid #ccc" }} title="Relatório Playwright" />
               </div>
             )}
