@@ -74,7 +74,7 @@ jobs:
             echo "ERROR: test file not found: tests/generated/${{ github.event.inputs.filename }}"
             exit 2
           fi
-          npx playwright test "tests/generated/${{ github.event.inputs.filename }}" --reporter=html --output=playwright-report || true
+          npx playwright test "tests/generated/${{ github.event.inputs.filename }}" --reporter=html --output=playwright-report
           ls -la playwright-report
           if [ ! -f playwright-report/index.html ]; then
             echo "No playwright-report/index.html produced"
