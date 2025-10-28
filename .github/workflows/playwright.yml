@@ -48,7 +48,7 @@ jobs:
 
   run-and-publish:
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend]  # espera pelos jobs anteriores para correr
+    needs: [build-backend, build-frontend]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -75,10 +75,14 @@ jobs:
             exit 2
           fi
           npx playwright test "tests/generated/${{ github.event.inputs.filename }}" --reporter=html --output=playwright-report
-          ls -la playwright-report
-          if [ ! -f playwright-report/index.html ]; then
-            echo "No playwright-report/index.html produced"
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "Playwright tests failed with exit code $EXIT_CODE"
+            ls -la playwright-report
+            cat playwright-report/index.html || echo "index.html not found"
+            exit $EXIT_CODE
           fi
+          ls -la playwright-report
         working-directory: ./backend 
 
       - name: Upload Playwright report
