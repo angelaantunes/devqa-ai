@@ -113,8 +113,8 @@ function TestCasesSection({ testCases: initialTestCases }) {
     setTestResults((prev) => ({ ...prev, [id]: { loading: true } }));
 
     const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`);
-
     const payload = res.data;
+
     setTestResults((prev) => ({
       ...prev,
       [id]: {
@@ -124,22 +124,34 @@ function TestCasesSection({ testCases: initialTestCases }) {
         stderr: payload.stderr || "",
         reportUrl: payload.reportUrl || null,
         runUrl: payload.runUrl || null,
+        publishedUrl: payload.publishedUrl || null,
       },
     }));
 
-    alert(`✅ Test finished: ${payload.conclusion}\n\nReport: ${payload.reportUrl || "publishing... (may take a minute)"}`);
+    alert(`✅ Test finished: ${payload.conclusion}\n\nReport: ${payload.publishedUrl || "Gerando... aguarde"}`);
 
-    if (payload.reportUrl) {
-      window.open(payload.reportUrl, "_blank");
-    } else if (payload.runUrl) {
-      window.open(payload.runUrl, "_blank");
-    }
   } catch (err) {
     console.error(err);
     alert("Error while triggering remote test: " + (err.response?.data?.error || err.message));
     setTestResults((prev) => ({ ...prev, [id]: { loading: false, error: err.message } }));
   }
 };
+
+const openReport = (id) => {
+  const result = testResults[id];
+  if (!result) return;
+
+  if (result.publishedUrl) {
+    window.open(result.publishedUrl, "_blank");
+  } else if (result.reportUrl) {
+    alert("O relatório ainda está sendo processado. Aguarde alguns minutos e tente novamente.");
+  } else if (result.runUrl) {
+    window.open(result.runUrl, "_blank");
+  } else {
+    alert("Relatório indisponível no momento.");
+  }
+};
+
   if (!testCases.length) return null
   return (
     <Paper sx={{ p: 2, mb: 3 }}>
@@ -274,7 +286,7 @@ function TestCasesSection({ testCases: initialTestCases }) {
             )}
 
             {testResults[tc.number]?.reportPath && (
-              <Button variant="outlined" size="small" color="secondary" sx={{ mb: 2, ml: 2 }} onClick={() => window.open(`${API_URL}${testResults[tc.number].reportPath}`, "_blank")}>
+              <Button variant="outlined" size="small" color="secondary" sx={{ mb: 2, ml: 2 }} onClick={() => openReport(tc.number)}>
                 📄 View Full Report
               </Button>
             )}
