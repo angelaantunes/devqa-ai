@@ -53,17 +53,17 @@ export async function saveGeneratedTestsAsFiles() {
 }
 
 function extractFunctions(code) {
-  const regex = /export\s+(?:async\s+)?function\s+([a-zA-Z0-9_]+)\s*\([^)]*\)\s*\{[^}]*\}/gms;
+  const regex = /export\s+(?:async\s+)?function\s+([a-zA-Z0-9_]+)\s*\([^)]*\)\s*\{[\s\S]*?\}/gm;
   let matches;
   const funcs = {};
-  
   while ((matches = regex.exec(code)) !== null) {
-    funcs[matches[1]] = matches[0]; // funçao completa com export async function ...
+    funcs[matches[1]] = matches[0];
   }
   return funcs;
 }
 
 export async function saveTestFilesForSingleCase(id) {
+  // Diretórios base
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const backendRoot = path.resolve(__dirname, "..");
@@ -71,24 +71,27 @@ export async function saveTestFilesForSingleCase(id) {
   const utilsDir = path.join(backendRoot, "tests", "utils");
   const testsDir = path.join(backendRoot, "tests", "generated");
 
+  // Caminho do JSON
   const jsonPath = path.join(backendRoot, "generated_tests.json");
   if (!fs.existsSync(jsonPath)) throw new Error("Nenhum ficheiro generated_tests.json encontrado.");
 
   const data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
 
+  // Buscar o caso de teste correto
   const tc = data.find((item) => {
     const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1];
     return issueNumber === String(id);
   });
-
   if (!tc) throw new Error(`Test case não encontrado para o número ${id} no ficheiro generated_tests.json.`);
 
-  const utilsCode = tc.utilsCode?.trim() || "";
+  // Preparar código
+  const utilsCodeRaw = tc.utilsCode?.trim() || "";
   let playwrightCode = tc.playwrightCode?.trim() || "";
 
-  // Corrige import no playwrightCode
+  // Corrigir import dos helpers
   playwrightCode = playwrightCode.replace(/from\s+['"].\/utils[^'"]*['"]/, "from '../utils/utils.js'");
 
+  // Criar diretórios se não existirem
   if (!fs.existsSync(utilsDir)) fs.mkdirSync(utilsDir, { recursive: true });
   if (!fs.existsSync(testsDir)) fs.mkdirSync(testsDir, { recursive: true });
 
@@ -99,25 +102,28 @@ export async function saveTestFilesForSingleCase(id) {
     existingUtils = fs.readFileSync(utilsPath, "utf-8");
   }
 
-  // Extrai funções exportadas nos códigos antigo e novo
+  // Mesclar funções: remove as redefinidas, junta antigas + novas
   const existingFunctions = extractFunctions(existingUtils);
-  const newFunctions = extractFunctions(utilsCode);
-
-  // Remove as funções antigas que são redefinidas nas novas
+  const newFunctions = extractFunctions(utilsCodeRaw);
   for (const fnName of Object.keys(newFunctions)) {
     delete existingFunctions[fnName];
   }
-
-  // Junta funções antigas restantes + as novas
   const mergedUtils =
     Object.values(existingFunctions).join("\n\n") +
     (Object.values(existingFunctions).length > 0 ? "\n\n" : "") +
     Object.values(newFunctions).join("\n\n");
 
-  // Grava utils.js atualizado
+  // Validação do JS antes de gravação
+  try {
+    new Function(mergedUtils);
+  } catch (error) {
+    console.error("💥 Código utils inválido, não será gravado:", error.message);
+    throw new Error("Código utils possui erro de sintaxe, gravação abortada.");
+  }
+
   fs.writeFileSync(utilsPath, mergedUtils.trim() + "\n", "utf-8");
 
-  // Grava o ficheiro de teste playwright
+  // Grava ficheiro do teste Playwright
   const filename = tc.title
     .toLowerCase()
     .replace(/\s+/g, "_")
@@ -126,13 +132,13 @@ export async function saveTestFilesForSingleCase(id) {
   const filePath = path.join(testsDir, `${filename}.spec.js`);
   fs.writeFileSync(filePath, playwrightCode, "utf-8");
 
-  // Grava os passos manuais (se existirem)
+  // Passos manuais, se existirem
   if (tc.manualSteps && tc.manualSteps.length) {
     const stepsPath = path.join(testsDir, `${filename}_manual_steps.json`);
     fs.writeFileSync(stepsPath, JSON.stringify(tc.manualSteps, null, 2), "utf-8");
   }
 
-  // Faz upload para o GitHub (mantém esta parte conforme tua implementação)
+  // Upload GitHub (mantém tua lógica)
   console.log(`📤 A enviar ficheiros do teste #${id} (${filename}.spec.js) para o GitHub...`);
   const repoPathTest = `backend/tests/generated/${filename}.spec.js`;
   const repoPathUtils = `backend/tests/utils/utils.js`;
