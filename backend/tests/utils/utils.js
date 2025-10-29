@@ -21,12 +21,6 @@ export function assertCreatedUser(body, expected) {
   expect(() => new Date(body.createdAt).toISOString()).not.toThrow();
 }
 
-export async function login(page, username, password) {
-  await page.fill('[data-test="username"]', username);
-  await page.fill('[data-test="password"]', password);
-  await page.click('[data-test="login-button"]');
-}
-
 export async function logout(page) {
   await page.click('#react-burger-menu-btn');
   await page.click('[data-test="logout-sidebar-link"]');

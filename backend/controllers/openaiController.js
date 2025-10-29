@@ -91,12 +91,11 @@ export function saveGeneratedTestsController(req, res) {
   }
 }
 
-export function saveGeneratedTestsSingleCaseController(req, res) {
+export async function saveGeneratedTestsSingleCaseController(req, res) {
    try {
     // Pode ser id, ticketId, testCaseId, etc.,
     const id = req.params.id;
-    console.log("req.params::", req.params);
-    const result = saveTestFilesForSingleCase(id)
+    const result = await saveTestFilesForSingleCase(id)
     res.json(result)
   } catch (err) {
     res.status(500).json({ error: err.message })

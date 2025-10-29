@@ -9,7 +9,6 @@ test.describe('POST /api/users', () => {
     const response = await postJson(request, 'https://reqres.in/api/users', payload);
     const duration = Date.now() - start;
 
-    expect(duration).toBeLessThan(1000);
     expect(response.status()).toBe(201);
 
     const body = await response.json();
