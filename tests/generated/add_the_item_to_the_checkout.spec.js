@@ -1,18 +1,19 @@
 import { test, expect } from '@playwright/test';
-import { addFirstItemToCart, goToCart, getCartItemPrice } from '../utils.js';
+import { addFirstItemToCart, openCart, getCartItemPrice } from '../utils.js';
 
-test.describe('Add first item to checkout', () => {
-  test('should add the first $29.99 item to cart and verify it in checkout', async ({ page }) => {
-    await page.goto('/inventory.html');
+test.describe('Add first item to cart and verify price', () => {
+  test('should add the first item to cart and show $29.99 in checkout', async ({ page }) => {
+    // 1. Navigate to inventory page (assumes already logged in)
+    await page.goto('https://www.saucedemo.com/inventory.html');
 
-    // Add the first item to cart
-    await addFirstItemToCart(page, '29.99');
+    // 2. Add the first item to cart
+    await addFirstItemToCart(page);
 
-    // Navigate to cart
-    await goToCart(page);
+    // 3. Open cart
+    await openCart(page);
 
-    // Verify price in cart
-    const price = await getCartItemPrice(page, 1);
+    // 4. Verify price in cart
+    const price = await getCartItemPrice(page);
     expect(price).toBe('$29.99');
   });
-});
+}
