@@ -80,20 +80,22 @@ function TestCasesSection({ testCases: initialTestCases }) {
   }
 
   const handleSaveTest = async (id, idx) => {
-  setSaveLoadingId(id);
-  try {
-    const res = await axios.post(`${API_URL}/api/save-generated-tests/${id}`);
+    setSaveLoadingId(id)
+    try {
+      const res = await axios.post(`${API_URL}/api/save-generated-tests/${id}`)
 
-    const updatedTestCases = [...testCases];
-    updatedTestCases[idx] = {
-      ...updatedTestCases[idx],
-      filename: res.data.filename, // guarda o nome do ficheiro
-    };
-    setTestCases(updatedTestCases);
+      const updatedTestCases = [...testCases]
+      updatedTestCases[idx] = {
+        ...updatedTestCases[idx],
+        filename: res.data.filename, // guarda o nome do ficheiro
+      }
+      setTestCases(updatedTestCases)
 
-    alert(`✅ Teste guardado para este ticket!\nFicheiro: ${res.data.filename}`);
-  } catch (err) {
-    alert("Erro ao guardar o teste!");
+      alert(`✅ Teste guardado para este ticket!\nFicheiro: ${res.data.filename}`)
+    } catch (err) {
+      alert("Erro ao guardar o teste!")
+    }
+    setSaveLoadingId(null)
   }
   setSaveLoadingId(null);
 };
@@ -108,38 +110,67 @@ function TestCasesSection({ testCases: initialTestCases }) {
     }
   }*/
 
- const handleRunTest = async (id) => {
-  try {
-    setTestResults((prev) => ({ ...prev, [id]: { loading: true } }));
+  const handleRunTest = async (id) => {
+    setTestResults((prev) => ({ ...prev, [id]: { loading: true } }))
+    let tries = 0
+    const maxTries = 60
 
-    const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`);
-
-    const payload = res.data;
-    setTestResults((prev) => ({
-      ...prev,
-      [id]: {
-        loading: false,
-        success: payload.conclusion === "success",
-        stdout: payload.stdout || "",
-        stderr: payload.stderr || "",
-        reportUrl: payload.reportUrl || null,
-        runUrl: payload.runUrl || null,
-      },
-    }));
-
-    alert(`✅ Test finished: ${payload.conclusion}\n\nReport: ${payload.reportUrl || "publishing... (may take a minute)"}`);
-
-    if (payload.reportUrl) {
-      window.open(payload.reportUrl, "_blank");
-    } else if (payload.runUrl) {
-      window.open(payload.runUrl, "_blank");
+    while (tries < maxTries) {
+      tries++
+      try {
+        const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`)
+        const { conclusion, publishedUrl, runUrl } = res.data
+        if (conclusion === "completed" || conclusion === "success" || conclusion === "failure") {
+          setTestResults((prev) => ({
+            ...prev,
+            [id]: {
+              loading: false,
+              success: conclusion === "success",
+              publishedUrl,
+              runUrl,
+            },
+          }))
+          break
+        } else {
+          // ainda a correr, aguardar
+          setTestResults((prev) => ({
+            ...prev,
+            [id]: {
+              loading: true,
+              success: false,
+              publishedUrl: null,
+              runUrl,
+            },
+          }))
+        }
+      } catch (err) {
+        console.error(err)
+        setTestResults((prev) => ({ ...prev, [id]: { loading: false, error: err.message } }))
+        break
+      }
+      await new Promise((res) => setTimeout(res, 3000))
     }
-  } catch (err) {
-    console.error(err);
-    alert("Error while triggering remote test: " + (err.response?.data?.error || err.message));
-    setTestResults((prev) => ({ ...prev, [id]: { loading: false, error: err.message } }));
+
+    if (tries >= maxTries) {
+      alert("Timeout esperando o resultado do teste.")
+    }
   }
-};
+
+  const openReport = (id) => {
+    const result = testResults[id]
+    if (!result) return
+
+    if (result.publishedUrl) {
+      window.open(result.publishedUrl, "_blank")
+    } else if (result.reportUrl) {
+      alert("O relatório ainda está sendo processado. Aguarde alguns minutos e tente novamente.")
+    } else if (result.runUrl) {
+      window.open(result.runUrl, "_blank")
+    } else {
+      alert("Relatório indisponível no momento.")
+    }
+  }
+
   if (!testCases.length) return null
   return (
     <Paper sx={{ p: 2, mb: 3 }}>
@@ -243,7 +274,7 @@ function TestCasesSection({ testCases: initialTestCases }) {
             )}
             {testResults[tc.number] && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: "#f5f5f5", borderRadius: 2 }}>
-                <Typography variant="subtitle1">🧪 Test Result ({testResults[tc.number].success ? "✅ Passed" : "❌ Failed"})</Typography>
+                <Typography variant="subtitle1">🧪 Test Result ({testResults[tc.number].loading ? "⏳ Running..." : testResults[tc.number].success ? "✅ Passed" : "❌ Failed"})</Typography>
 
                 {testResults[tc.number].loading ? (
                   <Typography variant="body2" color="text.secondary">
@@ -273,10 +304,14 @@ function TestCasesSection({ testCases: initialTestCases }) {
               </Box>
             )}
 
-            {testResults[tc.number]?.reportPath && (
-              <Button variant="outlined" size="small" color="secondary" sx={{ mb: 2, ml: 2 }} onClick={() => window.open(`${API_URL}${testResults[tc.number].reportPath}`, "_blank")}>
-                📄 View Full Report
-              </Button>
+            {testResults[tc.number]?.publishedUrl && (
+              // <Button variant="outlined" size="small" color="secondary" sx={{ mb: 2, ml: 2 }} onClick={() => openReport(tc.number)}>
+              //   📄 View Full Report
+              // </Button>
+              <div style={{ marginTop: "20px" }}>
+                <Typography variant="h6">Full Report</Typography>
+                <iframe src={testResults[tc.number].publishedUrl} style={{ width: "100%", height: "600px", border: "1px solid #ccc" }} title="Relatório Playwright" />
+              </div>
             )}
           </AccordionDetails>
         </Accordion>
