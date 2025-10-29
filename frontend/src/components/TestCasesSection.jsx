@@ -97,6 +97,8 @@ function TestCasesSection({ testCases: initialTestCases }) {
     }
     setSaveLoadingId(null)
   }
+  setSaveLoadingId(null);
+};
 
   /*const handleRunTest = async (id) => {
     try {

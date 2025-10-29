@@ -11,6 +11,6 @@ COPY . .
 # Os browsers já vêm instalados na imagem base, mas este comando reforça
 RUN npx playwright install --with-deps
 
-EXPOSE 10000
+EXPOSE 3000
 
 CMD ["npm", "run", "start"]

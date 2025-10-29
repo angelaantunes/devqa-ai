@@ -2,6 +2,8 @@ import { exec } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 
+const GITHUB_API = process.env.GITHUB_API || "https://api.github.com";
+
 export function runPlaywrightTests() {
   return new Promise((resolve, reject) => {
     // Assumindo que o cwd é backend
@@ -154,4 +156,101 @@ export function runSinglePlaywrightTest(testNumber) {
       reject({ error: err.message });
     }
   });
+}
+
+export async function runRemotePlaywrightTest(testName) {
+  const repo = process.env.GITHUB_REPO; // "angelaantunes/devqa-ai"
+  const token = process.env.GITHUB_TOKEN;
+  const GITHUB_API = process.env.GITHUB_API || "https://api.github.com";
+
+  // Disparar workflow (mantém)
+  let dispatchResp = await fetch(
+    `${GITHUB_API}/repos/${repo}/actions/workflows/playwright.yml/dispatches`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+      },
+      body: JSON.stringify({ ref: "main", inputs: { filename: testName } }),
+    }
+  );
+  if (!dispatchResp.ok) {
+    throw new Error(`Erro ao disparar workflow: ${await dispatchResp.text()}`);
+  }
+
+  // Polling para run iniciado (mantém)
+  let runId;
+  let polls = 0;
+  const maxPolls = 60;
+
+  while (!runId && polls < maxPolls) {
+    polls++;
+    const runResp = await fetch(
+      `${GITHUB_API}/repos/${repo}/actions/runs?event=workflow_dispatch&branch=main`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const data = await runResp.json();
+    if (data.workflow_runs && data.workflow_runs.length > 0) {
+      runId = data.workflow_runs[0].id;
+      break;
+    }
+    await new Promise((res) => setTimeout(res, 1000));
+  }
+  if (!runId) throw new Error("Não foi possível encontrar workflow run");
+
+  // Polling até conclusão (mantém)
+  let conclusion = null;
+  while (conclusion === null && polls < maxPolls) {
+    polls++;
+    const resp = await fetch(
+      `${GITHUB_API}/repos/${repo}/actions/runs/${runId}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const runData = await resp.json();
+    if (runData.status === "completed") {
+      conclusion = runData.conclusion;
+      break;
+    }
+    await new Promise((res) => setTimeout(res, 3000));
+  }
+  if (conclusion === null) throw new Error("Timeout aguardando finalização do run");
+
+  // Obter artifact
+  const artifacts = await getArtifacts(runId, repo, token);
+  const reportUrl = findReportUrl(artifacts, repo);
+
+  return {
+    testName,
+    conclusion,
+    runUrl: `https://github.com/${repo}/actions/runs/${runId}`,
+    reportUrl,
+    publishedUrl: `https://${repo.split('/')[0]}.github.io/${repo.split('/')[1]}/${testName}.html`,
+  };
+}
+
+// --- mantem estas funções tal como estavam (sem /devqa-ai extra)
+async function getArtifacts(runId, repo, token) {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+  };
+  const resp = await fetch(
+    `https://api.github.com/repos/${repo}/actions/runs/${runId}/artifacts`,
+    { headers }
+  );
+  if (!resp.ok) throw new Error(`Erro ao buscar artifacts: ${await resp.text()}`);
+  const data = await resp.json();
+  return data.artifacts;
+}
+
+
+function findReportUrl(artifacts, repo) {
+  const reportArtifact = artifacts.find(
+    (a) =>
+      a.name.includes("playwright-report") ||
+      a.name.includes("github-pages")
+  );
+  if (!reportArtifact) return null;
+  return `https://github.com/${repo}/actions/artifacts/${reportArtifact.id}`;
 }
