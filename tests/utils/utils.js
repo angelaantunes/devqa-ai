@@ -21,29 +21,44 @@ export function assertCreatedUser(body, expected) {
   expect(() => new Date(body.createdAt).toISOString()).not.toThrow();
 }
 
-export async function login(page, username, password) {
-  await page.fill('[data-test="username"]', username);
-  await page.fill('[data-test="password"]', password);
-  await page.click('[data-test="login-button"]');
-}
-
 export async function logout(page) {
   await page.click('#react-burger-menu-btn');
   await page.click('[data-test="logout-sidebar-link"]');
 }
 
-export async function addFirstItemToCart(page) {
-  const addButton = page.locator('.inventory_item').first().locator('button:has-text("Add to cart")');
+/**
+ * Adds the first inventory item whose price matches the expected value.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} expectedPrice - Price to match (e.g., '29.99')
+ */
+export async function addFirstItemToCart(page, expectedPrice) {
+  const priceLocator = page.locator('.inventory_item').first().locator('.inventory_item_price');
+  const priceText = await priceLocator.textContent();
+  const price = priceText.replace(/[^0-9.]/g, '');
+  if (price !== expectedPrice) {
+    throw new Error(`First item price is $${price}, expected $${expectedPrice}`);
+  }
+  const addButton = page.locator('.inventory_item').first().locator('[data-test="add-to-cart-sauce-labs-backpack"]');
   await addButton.click();
   await expect(addButton).toHaveText('Remove');
 }
 
-export async function openCart(page) {
+/**
+ * Clicks the shopping-cart icon to navigate to the cart page.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function goToCart(page) {
   await page.click('#shopping_cart_container');
   await expect(page).toHaveURL(/.*cart.html/);
 }
 
-export async function getCartItemPrice(page) {
-  const priceText = await page.locator('.inventory_item_price').first().textContent();
-  return priceText.trim();
+/**
+ * Returns the displayed price of the nth item in the cart.
+ * @param {import('@playwright/test').Page} page
+ * @param {number} index - 1-based index
+ * @returns {Promise<string>}
+ */
+export async function getCartItemPrice(page, index) {
+  const priceLocator = page.locator('.cart_item').nth(index - 1).locator('.inventory_item_price');
+  return (await priceLocator.textContent()).trim();
 }
