@@ -3,3 +3,47 @@ export async function login(page, username, password) {
   await page.getByPlaceholder('Password').fill(password);
   await page.getByRole('button', { name: 'Login' }).click();
 }
+
+export async function postJson(request, url, data) {
+  return request.post(url, {
+    headers: { 'Content-Type': 'application/json' },
+    data,
+  });
+}
+
+export function assertCreatedUser(body, expected) {
+  const { name, job } = expected;
+  expect(body).toHaveProperty('name', name);
+  expect(body).toHaveProperty('job', job);
+  expect(body).toHaveProperty('id');
+  expect(body.id).toBeTruthy();
+  expect(body).toHaveProperty('createdAt');
+  expect(() => new Date(body.createdAt).toISOString()).not.toThrow();
+}
+
+export async function login(page, username, password) {
+  await page.fill('[data-test="username"]', username);
+  await page.fill('[data-test="password"]', password);
+  await page.click('[data-test="login-button"]');
+}
+
+export async function logout(page) {
+  await page.click('#react-burger-menu-btn');
+  await page.click('[data-test="logout-sidebar-link"]');
+}
+
+export async function addFirstItemToCart(page) {
+  const addButton = page.locator('.inventory_item').first().locator('button:has-text("Add to cart")');
+  await addButton.click();
+  await expect(addButton).toHaveText('Remove');
+}
+
+export async function openCart(page) {
+  await page.click('#shopping_cart_container');
+  await expect(page).toHaveURL(/.*cart.html/);
+}
+
+export async function getCartItemPrice(page) {
+  const priceText = await page.locator('.inventory_item_price').first().textContent();
+  return priceText.trim();
+}
