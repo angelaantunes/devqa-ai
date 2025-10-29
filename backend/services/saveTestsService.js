@@ -133,11 +133,12 @@ export async function saveTestFilesForSingleCase(id) {
     return {
       message: `✅ Test files for ticket #${id} saved and uploaded successfully`,
       title: tc.title,
+      filename: `${filename}.spec.js`,
       uploaded: {
         /*test: testUpload.data.content.html_url,
         utils: utilsUpload.data.content.html_url,*/
-          test: testUpload.content.html_url,
-    utils: utilsUpload.content.html_url,
+         test: testUpload.content.html_url,
+        utils: utilsUpload.content.html_url,
       },
     };
   } catch (err) {
