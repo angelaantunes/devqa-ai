@@ -128,8 +128,8 @@ export async function saveTestFilesForSingleCase(id) {
 
   // 📤 Enviar o ficheiro e utils para o GitHub
   console.log(`📤 A enviar ficheiros do teste #${id} (${filename}.spec.js) para o GitHub...`)
-  const repoPathTest = `tests/generated/${filename}.spec.js`
-  const repoPathUtils = `tests/utils/utils.js`
+  const repoPathTest = `backend/tests/generated/${filename}.spec.js`
+  const repoPathUtils = `backend/tests/utils/utils.js`
 
   try {
     const testUpload = await uploadTestFileToGitHub(filePath, repoPathTest, `Add/Update test for issue #${id}: ${tc.title}`)
