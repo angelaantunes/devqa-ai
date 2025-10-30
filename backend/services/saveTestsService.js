@@ -62,6 +62,53 @@ function extractFunctions(code) {
   return funcs;
 }
 
+function validateAndPrepareUtilsCode(rawUtilsCode) {
+  if (!rawUtilsCode || typeof rawUtilsCode !== "string") {
+    throw new Error("utilsCode is empty or not a string");
+  }
+
+  // Normalize line endings
+  let code = rawUtilsCode.replace(/\r\n/g, "\n").trim();
+
+  // Extract exported helper names:
+  // - export async function name(...)
+  // - export function name(...)
+  // - export const name = async (...) => ...
+  // - export const name = (...) => ...
+  const helperNames = new Set();
+
+  const fnRegex = /export\s+(?:async\s+)?function\s+([A-Za-z0-9_$]+)/g;
+  const constRegex = /export\s+const\s+([A-Za-z0-9_$]+)\s*=/g;
+  let m;
+  while ((m = fnRegex.exec(code)) !== null) helperNames.add(m[1]);
+  while ((m = constRegex.exec(code)) !== null) helperNames.add(m[1]);
+
+  // If none found, still allow empty utils (caller may expect empty string)
+  if (helperNames.size === 0) {
+    // If code contains 'export' but no function names, consider it suspicious
+    if (/export\s+/.test(code)) {
+      throw new Error("No exported helper functions detected in utilsCode");
+    }
+    return ""; // treat as no utils
+  }
+
+  // Build header comment listing helpers
+  const namesList = Array.from(helperNames).join(", ");
+  const header = `// Exported helpers: ${namesList}\n\n`;
+
+  // If header already present, avoid duplicating
+  if (!code.startsWith("// Exported helpers:")) {
+    code = header + code;
+  }
+
+  // Basic syntax sanity: must not include require() or module.exports
+  if (/require\(|module\.exports/.test(code)) {
+    throw new Error("utilsCode must use ES Modules (no require/module.exports)");
+  }
+
+  return code;
+}
+
 export async function saveTestFilesForSingleCase(id) {
   // Diretórios base
   const __filename = fileURLToPath(import.meta.url);
@@ -113,15 +160,25 @@ export async function saveTestFilesForSingleCase(id) {
     (Object.values(existingFunctions).length > 0 ? "\n\n" : "") +
     Object.values(newFunctions).join("\n\n");
 
-  // Validação do JS antes de gravação
+  // Prepare and validate utils.js before writing
+  let preparedUtils;
   try {
-    new Function(mergedUtils);
-  } catch (error) {
-    console.error("💥 Código utils inválido, não será gravado:", error.message);
+    preparedUtils = validateAndPrepareUtilsCode(mergedUtils);
+  } catch (err) {
+    console.error("Código utils possui erro de validação/preparação, gravação abortada:", err.message);
     throw new Error("Código utils possui erro de sintaxe, gravação abortada.");
   }
 
-  fs.writeFileSync(utilsPath, mergedUtils.trim() + "\n", "utf-8");
+  // Sanity syntax check (throws if invalid)
+  try {
+    new Function(preparedUtils);
+  } catch (error) {
+    console.error("💥 Código utils inválido após preparação, não será gravado:", error.message);
+    throw new Error("Código utils possui erro de sintaxe, gravação abortada.");
+  }
+
+  // Write the final utils.js
+  fs.writeFileSync(utilsPath, preparedUtils.trim() + "\n", "utf-8");
 
   // Grava ficheiro do teste Playwright
   const filename = tc.title
