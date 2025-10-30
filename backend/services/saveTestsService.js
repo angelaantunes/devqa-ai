@@ -64,49 +64,36 @@ function extractFunctions(code) {
 
 function validateAndPrepareUtilsCode(rawUtilsCode) {
   if (!rawUtilsCode || typeof rawUtilsCode !== "string") {
-    throw new Error("utilsCode is empty or not a string");
+    throw new Error("utilsCode está vazio ou não é uma string");
   }
 
-  // Normalize line endings
+  // Normaliza quebras de linha
   let code = rawUtilsCode.replace(/\r\n/g, "\n").trim();
 
-  // Extract exported helper names:
-  // - export async function name(...)
-  // - export function name(...)
-  // - export const name = async (...) => ...
-  // - export const name = (...) => ...
+  // Extrai nomes das funções exportadas
   const helperNames = new Set();
-
   const fnRegex = /export\s+(?:async\s+)?function\s+([A-Za-z0-9_$]+)/g;
   const constRegex = /export\s+const\s+([A-Za-z0-9_$]+)\s*=/g;
+  
   let m;
-  while ((m = fnRegex.exec(code)) !== null) helperNames.add(m[1]);
-  while ((m = constRegex.exec(code)) !== null) helperNames.add(m[1]);
-
-  // If none found, still allow empty utils (caller may expect empty string)
-  if (helperNames.size === 0) {
-    // If code contains 'export' but no function names, consider it suspicious
-    if (/export\s+/.test(code)) {
-      throw new Error("No exported helper functions detected in utilsCode");
-    }
-    return ""; // treat as no utils
+  while ((m = fnRegex.exec(code)) !== null) {
+    helperNames.add(m[1]);
+  }
+  while ((m = constRegex.exec(code)) !== null) {
+    helperNames.add(m[1]);
   }
 
-  // Build header comment listing helpers
+  // Se não encontrou funções mas tem código, considera válido
+  if (helperNames.size === 0 && code.length > 0) {
+    return code;
+  }
+
+  // Adiciona o comentário de cabeçalho com a lista de helpers
   const namesList = Array.from(helperNames).join(", ");
   const header = `// Exported helpers: ${namesList}\n\n`;
 
-  // If header already present, avoid duplicating
-  if (!code.startsWith("// Exported helpers:")) {
-    code = header + code;
-  }
-
-  // Basic syntax sanity: must not include require() or module.exports
-  if (/require\(|module\.exports/.test(code)) {
-    throw new Error("utilsCode must use ES Modules (no require/module.exports)");
-  }
-
-  return code;
+  // Retorna o código final preparado
+  return header + code;
 }
 
 export async function saveTestFilesForSingleCase(id) {
