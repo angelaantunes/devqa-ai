@@ -116,19 +116,6 @@ function validateAndPrepareUtilsCode(rawUtilsCode) {
   
   console.log("✨ Código final preparado:", finalCode);
   
-  // Validação final de sintaxe
-  try {
-    console.log("🧪 Testando sintaxe...");
-    // Remove 'export' temporariamente para teste de sintaxe
-    const testCode = finalCode.replace(/export\s+/g, '');
-    new Function(testCode);
-    console.log("✅ Sintaxe válida!");
-  } catch (err) {
-    console.error("❌ Erro de sintaxe no código final:", err.message);
-    throw new Error(`Código utils possui erro de sintaxe: ${err.message}`);
-  }
-
-  // Retorna o código original com 'export'
   return finalCode;
 }
 
@@ -191,11 +178,6 @@ export async function saveTestFilesForSingleCase(id) {
     
     preparedUtils = validateAndPrepareUtilsCode(mergedUtils);
     console.log("✅ Utils code preparado com sucesso:", preparedUtils);
-    
-    // Teste de sintaxe
-    console.log("🧪 Testando sintaxe...");
-    new Function(preparedUtils);
-    console.log("✅ Sintaxe válida!");
   } catch (err) {
     console.error("❌ Erro durante validação/preparação:", err);
     console.error("📄 Código que causou erro:", mergedUtils);
