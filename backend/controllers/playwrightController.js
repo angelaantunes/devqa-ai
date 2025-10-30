@@ -61,39 +61,54 @@ export async function runTestsAndGetReport(req, res) {
 export async function runSinglePlaywrightTestController(req, res) {
   try {
     const { id } = req.params;
-    console.log("🎯 Executando teste para ID:", id);
+    const useGithubActions = req.query.remote === 'true';
+    console.log(`🎯 Executando teste ${useGithubActions ? 'remoto' : 'local'} para ID:`, id);
 
-    const result = await runSinglePlaywrightTest(id, true); // true = usar GitHub Actions
+    const result = await runSinglePlaywrightTest(id, useGithubActions);
     
     if (!result) {
       return res.status(500).json({ error: "Erro inesperado: resultado vazio" });
     }
 
-    if (result.isRemote) {
-      // Retorno específico para execução remota
+    // Para execução local
+    if (!useGithubActions) {
       return res.json({
-        message: `Teste Playwright executado remotamente para o ticket ${id}`,
+        message: `Teste local executado para o ticket ${id}`,
         success: result.success,
-        reportPath: result.reportPath || null,
-        remoteUrl: result.remoteUrl || null, // URL do resultado remoto, se aplicável
+        stdout: result.stdout?.trim(),
+        stderr: result.stderr?.trim(),
+        reportPath: result.reportPath,
+        publishedUrl: result.publishedUrl
       });
     }
 
+    // Para execução remota
+    let githubReportUrl = null;
+    if (fs.existsSync("playwright-report/index.html")) {
+      await uploadTestFileToGitHub(
+        "playwright-report/index.html",
+        `reports/test_${id}_report.html`,
+        `Add Playwright test report for #${id}`
+      );
+      githubReportUrl = `https://github.com/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO_NAME}/blob/main/reports/test_${id}_report.html`;
+    }
+
     res.json({
-      message: `Playwright test executed for ticket ${id}`,
+      message: `Teste remoto iniciado para o ticket ${id}`,
       success: result.success,
-      /*stdout: result.stdout,
-      stderr: result.stderr*/
       stdout: result.stdout?.trim(),
       stderr: result.stderr?.trim(),
-      reportPath: result.reportPath || null,
+      reportPath: githubReportUrl,
+      publishedUrl: result.publishedUrl,
+      githubTestUrl: `https://github.com/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO_NAME}/actions`
     });
+
   } catch (error) {
     console.error("❌ Erro ao executar teste:", error);
     res.status(500).json({
       error: error.error || error.message,
       stdout: error.stdout?.trim(),
-      stderr: error.stderr?.trim(),
+      stderr: error.stderr?.trim()
     });
   }
 }
