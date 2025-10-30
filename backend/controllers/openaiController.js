@@ -53,32 +53,44 @@ import { saveGeneratedTestsAsFiles, saveTestFilesForSingleCase } from "../servic
 
 export async function generateTestsFromCases(req, res) {
   try {
-    const testCases = getTestCases()
+    const testCases = getTestCases();
     if (!testCases.length) {
-      return res.status(400).json({ error: "No test cases stored. Call /api/test-cases first." })
+      return res.status(400).json({ error: "No test cases stored. Call /api/test-cases first." });
     }
 
-    const results = []
+    const results = [];
     for (const testCase of testCases) {
-      const aiResult = await generateTestsForCase(testCase)
+      const aiResult = await generateTestsForCase(testCase);
+
+      // Se 'aiResult' for string, faz parse JSON
+      let parsedResult = aiResult;
+      if (typeof aiResult === "string") {
+        try {
+          parsedResult = JSON.parse(aiResult);
+        } catch {
+          // fallback; deixa como string
+        }
+      }
+
       results.push({
+        number: testCase.number,
         title: testCase.title,
         url: testCase.url,
-        utilsCode: aiResult.utilsCode || "",
-        playwrightCode: aiResult.playwrightCode,
-        manualSteps: aiResult.manualSteps,
-      })
+        utilsCode: parsedResult.utilsCode || "",
+        playwrightCode: parsedResult.playwrightCode || "",
+        manualSteps: parsedResult.manualSteps || [],
+      });
     }
 
-    const filePath = path.join(process.cwd(), "", "generated_tests.json")
-    fs.writeFileSync(filePath, JSON.stringify(results, null, 2), "utf-8")
+    const filePath = path.join(process.cwd(), "", "generated_tests.json");
+    fs.writeFileSync(filePath, JSON.stringify(results, null, 2), "utf-8");
 
-    console.log(`✅ Testes gerados e guardados em ${filePath}`)
+    console.log(`✅ Testes gerados e guardados em ${filePath}`);
 
-    res.json(results)
+    return res.json(results);
   } catch (error) {
-    console.error("Error generating tests from cases:", error)
-    res.status(500).json({ error: "Failed to generate tests" })
+    console.error("Error generating tests from cases:", error);
+    return res.status(500).json({ error: "Failed to generate tests" });
   }
 }
 
