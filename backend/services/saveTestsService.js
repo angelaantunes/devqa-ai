@@ -118,12 +118,17 @@ function validateAndPrepareUtilsCode(rawUtilsCode) {
   
   // Validação final de sintaxe
   try {
-    new Function(finalCode);
+    console.log("🧪 Testando sintaxe...");
+    // Remove 'export' temporariamente para teste de sintaxe
+    const testCode = finalCode.replace(/export\s+/g, '');
+    new Function(testCode);
+    console.log("✅ Sintaxe válida!");
   } catch (err) {
     console.error("❌ Erro de sintaxe no código final:", err.message);
     throw new Error(`Código utils possui erro de sintaxe: ${err.message}`);
   }
 
+  // Retorna o código original com 'export'
   return finalCode;
 }
 
