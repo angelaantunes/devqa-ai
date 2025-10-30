@@ -1,4 +1,4 @@
-import { runPlaywrightTests, runSinglePlaywrightTest  } from '../services/playwrightRunService.js';
+import { runPlaywrightTests, runSinglePlaywrightTest } from '../services/playwrightRunService.js';
 import { uploadTestFileToGitHub, uploadAllGeneratedTestsToGitHub } from '../services/githubFileService.js';
 import fs from "fs"
 import { createTestCase, createTestRun } from '../services/practiTestService.js';
@@ -53,8 +53,8 @@ export async function runTestsAndGetReport(req, res) {
       githubTestFiles: testFiles
     });
   } catch (error) {
-    console.error("Erro no runTestsAndGetReport:", error)
-    res.status(500).json({ error: error.error || error.message, stdout: error.stdout, stderr: error.stderr });
+    console.error("Error running tests:", error);
+    res.status(500).json({ error: error.message || "Failed to run tests" });
   }
 }
 
@@ -92,10 +92,6 @@ export async function runSinglePlaywrightTestController(req, res) {
 
   } catch (error) {
     console.error("❌ Erro ao executar teste:", error);
-    res.status(500).json({
-      error: error.error || error.message,
-      stdout: error.stdout?.trim(),
-      stderr: error.stderr?.trim()
-    });
+    res.status(500).json({ error: error.error || error.message });
   }
 }

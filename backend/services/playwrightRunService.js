@@ -23,28 +23,14 @@ export function runPlaywrightTests() {
   });
 }
 
-export function runSinglePlaywrightTest(testNumber, useGithubActions = false) {
+export function runSinglePlaywrightTest(testNumber) {
   return new Promise((resolve, reject) => {
     try {
-      if (useGithubActions) {
-        console.log('🚀 Disparando teste via GitHub Actions...');
-        triggerGitHubAction()
-          .then(() => {
-            resolve({
-              success: true,
-              isRemote: true
-            });
-          })
-          .catch(error => reject({ error: error.message }));
-        return;
-      }
-
       const jsonPath = path.join(process.cwd(), "generated_tests.json");
       if (!fs.existsSync(jsonPath)) {
         return reject({ error: "Ficheiro generated_tests.json não encontrado" });
       }
 
-      // Find test case
       const data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
       const tc = data.find((item) => {
         const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1];
@@ -55,7 +41,6 @@ export function runSinglePlaywrightTest(testNumber, useGithubActions = false) {
         return reject({ error: `Teste não encontrado para o issue #${testNumber}` });
       }
 
-      // For local execution
       const filename = tc.title
         .toLowerCase()
         .replace(/\s+/g, "_")
@@ -66,23 +51,18 @@ export function runSinglePlaywrightTest(testNumber, useGithubActions = false) {
         return reject({ error: `Ficheiro de teste não encontrado: ${testPath}` });
       }
 
-      console.log(`🧪 Executando teste localmente: ${testPath}`);
-      exec(`npx playwright test ${testPath} --reporter=html`, 
-        { cwd: process.cwd() }, 
-        (error, stdout, stderr) => {
-          if (error) {
-            return reject({ error: error.message, stdout, stderr });
-          }
-          resolve({ 
-            success: true, 
-            stdout, 
-            stderr,
-            reportPath: '/playwright-report/index.html',
-            isRemote: false,
-            publishedUrl: '/playwright-report/index.html'
+      console.log(`🚀 Disparando teste via GitHub Actions...`);
+      triggerGitHubAction()
+        .then(() => {
+          resolve({
+            success: true,
+            stdout: "Test triggered on GitHub Actions",
+            stderr: "",
+            reportPath: `https://github.com/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO_NAME}/actions/runs/latest`,
+            publishedUrl: `https://github.com/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO_NAME}/actions`
           });
-        }
-      );
+        })
+        .catch(error => reject({ error: error.message }));
 
     } catch (err) {
       reject({ error: err.message });
