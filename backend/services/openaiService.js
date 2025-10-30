@@ -1,7 +1,6 @@
-import OpenAI from "openai";
-import dotenv from "dotenv";
-dotenv.config();
-
+import OpenAI from "openai"
+import dotenv from "dotenv"
+dotenv.config()
 
 /*const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -13,24 +12,23 @@ dotenv.config();
 });*/
 
 const openai = new OpenAI({
-    baseURL:process.env.HF_BASE_URL,
-    apiKey:process.env.HF_TOKEN,
+  baseURL: process.env.HF_BASE_URL,
+  apiKey: process.env.HF_TOKEN,
 })
-
 
 // Gerar código Playwright ou sugestões a partir de prompt
 export async function generateOpenAITestCode(prompt) {
   const completion = await openai.chat.completions.create({
     //model: "gpt-4o",
-    model:"moonshotai/Kimi-K2-Instruct-0905",
+    model: "moonshotai/Kimi-K2-Instruct-0905",
     messages: [
       { role: "system", content: "You generate clean Playwright test code." },
       { role: "user", content: prompt },
     ],
     temperature: 0,
-  });
+  })
 
-  return completion.choices[0].message.content.trim();
+  return completion.choices[0].message.content.trim()
 }
 
 /**
@@ -106,46 +104,24 @@ export async function login(page, username, password) {
   await page.fill('#password', password);
   await page.click('button[type=submit]');
 }
-`;
+`
 
   const completion = await openai.chat.completions.create({
     model: "moonshotai/Kimi-K2-Instruct-0905",
     messages: [
       { role: "system", content: "You generate Playwright tests with helper functions." },
-      { role: "user", content: prompt }
+      { role: "user", content: prompt },
     ],
     temperature: 0.2,
-    response_format: { type: "json_object" }
-  });
+    response_format: { type: "json_object" },
+  })
 
-  let responseText = completion.choices?.[0]?.message?.content || "";
+  const responseContent = completion.choices?.[0]?.message?.content
 
-  // cleanup markdown blocks if present
-  responseText = responseText.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
-
-  // extract first {...} JSON object
-  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-  if (jsonMatch) responseText = jsonMatch[0];
-
-  // try parse; if fails, attempt a simple repair of unescaped quotes in code strings
-  try {
-    return JSON.parse(responseText);
-  } catch (err1) {
-    // attempt to escape inner double-quotes inside code blocks between quotes
-    try {
-      // Heuristic: replace occurrences of "code with "inner "quotes" inside by escaping interior quotes
-      // We only attempt a mild repair — not bulletproof, but reduces common failures.
-      let repaired = responseText
-        // remove trailing non-json after the object if any
-        .replace(/}\s*[^}]*$/s, "}")
-        // escape any double quotes that appear between parentheses or after = in code (very heuristic)
-        .replace(/(["])([^\n]*?)(["])(?=[\s\S]*?:)/g, (m) => m); // noop safe fallback
-
-      // Final fallback: attempt to parse with Function constructor (risky) — avoid. Instead rethrow original.
-      throw err1;
-    } catch (err2) {
-      console.error("Resposta não é JSON válido:", responseText);
-      throw err1;
-    }
+  if (!responseContent) {
+    throw new Error("Resposta vazia do OpenAI")
   }
+
+  // responseContent já é um objeto JSON conforme response_format json_object
+  return responseContent
 }
