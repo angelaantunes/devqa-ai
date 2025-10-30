@@ -107,12 +107,13 @@ export async function login(page, username, password) {
 `
 
   const completion = await openai.chat.completions.create({
-    model: "moonshotai/Kimi-K2-Instruct-0905",
+    model: "gpt-4o",
     messages: [
       { role: "system", content: "You generate Playwright tests with helper functions." },
       { role: "user", content: prompt },
     ],
-    temperature: 0.2,
+    temperature: 0,
+    max_tokens: 1500,
     response_format: { type: "json_object" },
   })
 
