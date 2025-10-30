@@ -61,11 +61,22 @@ export async function runTestsAndGetReport(req, res) {
 export async function runSinglePlaywrightTestController(req, res) {
   try {
     const { id } = req.params;
-    console.log("🎯 Running single test for ID:", id);
+    console.log("🎯 Executando teste para ID:", id);
 
-    const result = await runSinglePlaywrightTest(id);
+    const result = await runSinglePlaywrightTest(id, true); // true = usar GitHub Actions
+    
     if (!result) {
       return res.status(500).json({ error: "Erro inesperado: resultado vazio" });
+    }
+
+    if (result.isRemote) {
+      // Retorno específico para execução remota
+      return res.json({
+        message: `Teste Playwright executado remotamente para o ticket ${id}`,
+        success: result.success,
+        reportPath: result.reportPath || null,
+        remoteUrl: result.remoteUrl || null, // URL do resultado remoto, se aplicável
+      });
     }
 
     res.json({

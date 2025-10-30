@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import { triggerGitHubAction } from './githubService.js';
 
 export function runPlaywrightTests() {
   return new Promise((resolve, reject) => {
@@ -71,87 +72,95 @@ export function runPlaywrightTests() {
   });
 }*/
 
-export function runSinglePlaywrightTest(testNumber) {
-  return new Promise((resolve, reject) => {
-    try {
-      const jsonPath = path.join(process.cwd(), "generated_tests.json");
-      if (!fs.existsSync(jsonPath)) {
-        return reject({ error: "Ficheiro generated_tests.json não encontrado" });
-      }
+export async function runSinglePlaywrightTest(testNumber, useGithubActions = true) {
+  try {
+    if (useGithubActions) {
+      console.log(`🚀 Disparando teste #${testNumber} via GitHub Actions...`);
+      const success = await triggerGitHubAction();
+      return {
+        success,
+        message: success ? 'Teste iniciado no GitHub Actions' : 'Falha ao iniciar no GitHub Actions',
+        isRemote: true
+      };
+    }
 
-      const data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
-      const tc = data.find((item) => {
-        const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1];
-        return issueNumber === String(testNumber);
-      });
+    const jsonPath = path.join(process.cwd(), "generated_tests.json");
+    if (!fs.existsSync(jsonPath)) {
+      throw new Error("Ficheiro generated_tests.json não encontrado");
+    }
 
-      if (!tc) {
-        return reject({ error: `Nenhum caso encontrado no generated_tests.json para o número ${testNumber}` });
-      }
+    const data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+    const tc = data.find((item) => {
+      const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1];
+      return issueNumber === String(testNumber);
+    });
 
-      const filename = tc.title
-        .toLowerCase()
-        .replace(/\s+/g, "_")
-        .replace(/[^a-z0-9_]/g, "");
+    if (!tc) {
+      throw new Error(`Nenhum caso encontrado no generated_tests.json para o número ${testNumber}`);
+    }
 
-      const absoluteTestPath = path.join(process.cwd(), "tests", "generated", `${filename}.spec.js`);
-      if (!fs.existsSync(absoluteTestPath)) {
-        return reject({ error: `Ficheiro de teste não encontrado: ${absoluteTestPath}` });
-      }
+    const filename = tc.title
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_]/g, "");
 
-      // Use relative path so Playwright treats it as a path (not regex)
-      const relativeTestPath = path.relative(process.cwd(), absoluteTestPath).replace(/\\/g, "/");
+    const absoluteTestPath = path.join(process.cwd(), "tests", "generated", `${filename}.spec.js`);
+    if (!fs.existsSync(absoluteTestPath)) {
+      throw new Error(`Ficheiro de teste não encontrado: ${absoluteTestPath}`);
+    }
 
-      console.log(`🧪 Running Playwright test (relative path): ${relativeTestPath}`);
+    // Use relative path so Playwright treats it as a path (not regex)
+    const relativeTestPath = path.relative(process.cwd(), absoluteTestPath).replace(/\\/g, "/");
 
-      // Use two reporters: line for console output and html to generate report
-      // We avoid --project to prevent "Project not found" errors.
-      // We pass both reporters separately (Playwright accepts multiple reporter flags).
-      //const command = `npx playwright test ${relativeTestPath} --reporter=line --reporter=html`;
-      const reportDir = path.join(process.cwd(), "playwright-report");
+    console.log(`🧪 Running Playwright test (relative path): ${relativeTestPath}`);
+
+    // Use two reporters: line for console output and html to generate report
+    // We avoid --project to prevent "Project not found" errors.
+    // We pass both reporters separately (Playwright accepts multiple reporter flags).
+    //const command = `npx playwright test ${relativeTestPath} --reporter=line --reporter=html`;
+    const reportDir = path.join(process.cwd(), "playwright-report");
  const command = `npx playwright test ${relativeTestPath} --reporter=html --output=${reportDir}`;
-      console.log("🚀 Executing:", command);
+    console.log("🚀 Executing:", command);
 
-      exec(command, { cwd: process.cwd(), shell: true, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
-        // Normalize outputs to strings
-        const out = (stdout || "").toString();
-        const err = (stderr || "").toString();
+    exec(command, { cwd: process.cwd(), shell: true, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+      // Normalize outputs to strings
+      const out = (stdout || "").toString();
+      const err = (stderr || "").toString();
 
-        if (error) {
-          // Return Playwright's stdout/stderr to the caller for debugging
-          return reject({ error: error.message, stdout: out, stderr: err });
+      if (error) {
+        // Return Playwright's stdout/stderr to the caller for debugging
+        return reject({ error: error.message, stdout: out, stderr: err });
+      }
+
+      // Playwright HTML report is generated at playwright-report/index.html by default
+       const reportIndexPath = path.join(reportDir, "index.html");
+
+        if (fs.existsSync(reportIndexPath)) {
+          // Cria uma cópia com o nome do teste
+          const renamedReport = path.join(reportDir, `${filename}.html`);
+          fs.copyFileSync(reportIndexPath, renamedReport);
         }
 
-        // Playwright HTML report is generated at playwright-report/index.html by default
-         const reportIndexPath = path.join(reportDir, "index.html");
-
-          if (fs.existsSync(reportIndexPath)) {
-            // Cria uma cópia com o nome do teste
-            const renamedReport = path.join(reportDir, `${filename}.html`);
-            fs.copyFileSync(reportIndexPath, renamedReport);
-          }
-
-          // ✅ devolve uma rota pública (/reports/...)
-          resolve({
-            success: true,
-            stdout: out,
-            stderr: err,
-            reportPath: `/reports/${filename}.html`,
-          });
-        /*const reportIndexPath = path.join(process.cwd(), "playwright-report", "index.html");
-        const reportExists = fs.existsSync(reportIndexPath);
-
+        // ✅ devolve uma rota pública (/reports/...)
         resolve({
           success: true,
           stdout: out,
           stderr: err,
-          // Return absolute path for backend; controller can convert to a public URL if needed
-          reportPath: reportExists ? reportIndexPath : null,
-          reportExists,
-        });*/
-      });
-    } catch (err) {
-      reject({ error: err.message });
-    }
-  });
+          reportPath: `/reports/${filename}.html`,
+        });
+      /*const reportIndexPath = path.join(process.cwd(), "playwright-report", "index.html");
+      const reportExists = fs.existsSync(reportIndexPath);
+
+      resolve({
+        success: true,
+        stdout: out,
+        stderr: err,
+        // Return absolute path for backend; controller can convert to a public URL if needed
+        reportPath: reportExists ? reportIndexPath : null,
+        reportExists,
+      });*/
+    });
+  } catch (err) {
+    reject({ error: err.message });
+  }
 }
