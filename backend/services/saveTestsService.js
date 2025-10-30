@@ -63,12 +63,16 @@ function extractFunctions(code) {
 }
 
 function validateAndPrepareUtilsCode(rawUtilsCode) {
+  console.log("🔍 Validando utils code:", rawUtilsCode);
+
   if (!rawUtilsCode || typeof rawUtilsCode !== "string") {
+    console.log("❌ utilsCode inválido:", rawUtilsCode);
     throw new Error("utilsCode está vazio ou não é uma string");
   }
 
   // Normaliza quebras de linha
   let code = rawUtilsCode.replace(/\r\n/g, "\n").trim();
+  console.log("📝 Código normalizado:", code);
 
   // Extrai nomes das funções exportadas
   const helperNames = new Set();
@@ -77,23 +81,30 @@ function validateAndPrepareUtilsCode(rawUtilsCode) {
   
   let m;
   while ((m = fnRegex.exec(code)) !== null) {
+    console.log("✅ Função helper encontrada:", m[1]);
     helperNames.add(m[1]);
   }
   while ((m = constRegex.exec(code)) !== null) {
+    console.log("✅ Constante helper encontrada:", m[1]);
     helperNames.add(m[1]);
   }
 
   // Se não encontrou funções mas tem código, considera válido
-  if (helperNames.size === 0 && code.length > 0) {
+  if (helperNames.size === 0) {
+    console.log("⚠️ Nenhuma função helper encontrada, mas código presente");
+    if (code.includes('export')) {
+      console.log("📄 Código contém 'export':", code);
+    }
     return code;
   }
 
   // Adiciona o comentário de cabeçalho com a lista de helpers
   const namesList = Array.from(helperNames).join(", ");
   const header = `// Exported helpers: ${namesList}\n\n`;
-
-  // Retorna o código final preparado
-  return header + code;
+  const finalCode = header + code;
+  
+  console.log("✨ Código final preparado:", finalCode);
+  return finalCode;
 }
 
 export async function saveTestFilesForSingleCase(id) {
@@ -150,17 +161,19 @@ export async function saveTestFilesForSingleCase(id) {
   // Prepare and validate utils.js before writing
   let preparedUtils;
   try {
+    console.log("🔄 Preparando utils code...");
+    console.log("📄 Utils code original:", mergedUtils);
+    
     preparedUtils = validateAndPrepareUtilsCode(mergedUtils);
-  } catch (err) {
-    console.error("Código utils possui erro de validação/preparação, gravação abortada:", err.message);
-    throw new Error("Código utils possui erro de sintaxe, gravação abortada.");
-  }
-
-  // Sanity syntax check (throws if invalid)
-  try {
+    console.log("✅ Utils code preparado com sucesso:", preparedUtils);
+    
+    // Teste de sintaxe
+    console.log("🧪 Testando sintaxe...");
     new Function(preparedUtils);
-  } catch (error) {
-    console.error("💥 Código utils inválido após preparação, não será gravado:", error.message);
+    console.log("✅ Sintaxe válida!");
+  } catch (err) {
+    console.error("❌ Erro durante validação/preparação:", err);
+    console.error("📄 Código que causou erro:", mergedUtils);
     throw new Error("Código utils possui erro de sintaxe, gravação abortada.");
   }
 
