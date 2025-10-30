@@ -113,11 +113,11 @@ export async function login(page, username, password) {
       { role: "user", content: prompt },
     ],
     temperature: 0,
-    max_tokens: 1500,
-    response_format: { type: "json_object" },
+    max_tokens:1500,
   })
 
   const responseContent = completion.choices?.[0]?.message?.content
+  console.log("responseContent:", responseContent);
 
   if (!responseContent) {
     throw new Error("Resposta vazia do OpenAI")
