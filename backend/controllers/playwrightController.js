@@ -64,43 +64,30 @@ export async function runSinglePlaywrightTestController(req, res) {
     const useGithubActions = req.query.remote === 'true';
     console.log(`🎯 Executando teste ${useGithubActions ? 'remoto' : 'local'} para ID:`, id);
 
-    const result = await runSinglePlaywrightTest(id, useGithubActions);
-    
-    if (!result) {
-      return res.status(500).json({ error: "Erro inesperado: resultado vazio" });
-    }
+    if (useGithubActions) {
+      // Upload test files to GitHub first
+      const testFiles = await uploadAllGeneratedTestsToGitHub();
+      console.log('📤 Arquivos enviados para GitHub:', testFiles);
 
-    // Para execução local
-    if (!useGithubActions) {
+      // Trigger GitHub Actions
+      const result = await runSinglePlaywrightTest(id, true);
+      
       return res.json({
-        message: `Teste local executado para o ticket ${id}`,
-        success: result.success,
-        stdout: result.stdout?.trim(),
-        stderr: result.stderr?.trim(),
-        reportPath: result.reportPath,
-        publishedUrl: result.publishedUrl
+        message: `Teste remoto iniciado para o ticket ${id}`,
+        success: true,
+        publishedUrl: `https://github.com/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO_NAME}/actions`,
+        githubTestFiles: testFiles
       });
     }
 
-    // Para execução remota
-    let githubReportUrl = null;
-    if (fs.existsSync("playwright-report/index.html")) {
-      await uploadTestFileToGitHub(
-        "playwright-report/index.html",
-        `reports/test_${id}_report.html`,
-        `Add Playwright test report for #${id}`
-      );
-      githubReportUrl = `https://github.com/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO_NAME}/blob/main/reports/test_${id}_report.html`;
-    }
-
-    res.json({
-      message: `Teste remoto iniciado para o ticket ${id}`,
+    // Local execution (should not reach here when remote=true)
+    const result = await runSinglePlaywrightTest(id, false);
+    return res.json({
+      message: `Teste local executado para o ticket ${id}`,
       success: result.success,
       stdout: result.stdout?.trim(),
       stderr: result.stderr?.trim(),
-      reportPath: githubReportUrl,
-      publishedUrl: result.publishedUrl,
-      githubTestUrl: `https://github.com/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO_NAME}/actions`
+      reportPath: result.reportPath
     });
 
   } catch (error) {

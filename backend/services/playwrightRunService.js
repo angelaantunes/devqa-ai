@@ -26,6 +26,19 @@ export function runPlaywrightTests() {
 export function runSinglePlaywrightTest(testNumber, useGithubActions = false) {
   return new Promise((resolve, reject) => {
     try {
+      if (useGithubActions) {
+        console.log('🚀 Disparando teste via GitHub Actions...');
+        triggerGitHubAction()
+          .then(() => {
+            resolve({
+              success: true,
+              isRemote: true
+            });
+          })
+          .catch(error => reject({ error: error.message }));
+        return;
+      }
+
       const jsonPath = path.join(process.cwd(), "generated_tests.json");
       if (!fs.existsSync(jsonPath)) {
         return reject({ error: "Ficheiro generated_tests.json não encontrado" });
@@ -40,22 +53,6 @@ export function runSinglePlaywrightTest(testNumber, useGithubActions = false) {
 
       if (!tc) {
         return reject({ error: `Teste não encontrado para o issue #${testNumber}` });
-      }
-
-      // For GitHub Actions execution
-      if (useGithubActions) {
-        console.log('🚀 Disparando teste via GitHub Actions...');
-        return triggerGitHubAction()
-          .then(() => {
-            resolve({
-              success: true,
-              isRemote: true,
-              stdout: "Test triggered on GitHub Actions",
-              stderr: "",
-              publishedUrl: `https://github.com/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO_NAME}/actions/runs/latest`
-            });
-          })
-          .catch(error => reject({ error: error.message }));
       }
 
       // For local execution
