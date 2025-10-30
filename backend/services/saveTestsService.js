@@ -53,7 +53,8 @@ export async function saveGeneratedTestsAsFiles() {
 }
 
 function extractFunctions(code) {
-  const regex = /export\s+(?:async\s+)?function\s+([a-zA-Z0-9_]+)\s*\([^)]*\)\s*\{[\s\S]*?\}/gm;
+  // Melhora a regex para capturar a função completa até o fechamento da chave
+  const regex = /export\s+(?:async\s+)?function\s+([a-zA-Z0-9_]+)\s*\([^)]*\)\s*{(?:[^{}]*|{[^{}]*})*}/gm;
   let matches;
   const funcs = {};
   while ((matches = regex.exec(code)) !== null) {
@@ -68,6 +69,16 @@ function validateAndPrepareUtilsCode(rawUtilsCode) {
   if (!rawUtilsCode || typeof rawUtilsCode !== "string") {
     console.log("❌ utilsCode inválido:", rawUtilsCode);
     throw new Error("utilsCode está vazio ou não é uma string");
+  }
+
+  // Verifica se todas as funções estão completas (têm o mesmo número de { e })
+  const openBraces = (rawUtilsCode.match(/{/g) || []).length;
+  const closeBraces = (rawUtilsCode.match(/}/g) || []).length;
+  
+  if (openBraces !== closeBraces) {
+    console.error("❌ Erro: Função incompleta - número de chaves não corresponde");
+    console.error(`Chaves abertas: ${openBraces}, Chaves fechadas: ${closeBraces}`);
+    throw new Error("Código utils possui erro de sintaxe: função incompleta");
   }
 
   // Normaliza quebras de linha
@@ -104,6 +115,15 @@ function validateAndPrepareUtilsCode(rawUtilsCode) {
   const finalCode = header + code;
   
   console.log("✨ Código final preparado:", finalCode);
+  
+  // Validação final de sintaxe
+  try {
+    new Function(finalCode);
+  } catch (err) {
+    console.error("❌ Erro de sintaxe no código final:", err.message);
+    throw new Error(`Código utils possui erro de sintaxe: ${err.message}`);
+  }
+
   return finalCode;
 }
 
