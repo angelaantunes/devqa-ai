@@ -1,4 +1,4 @@
-// Exported helpers: addFirstItemToCart, goToCart, getCartItemPrice, getFirstItemTitle, getFirstItemPrice, login, logout, getInventoryItem, getItemTitle, getItemPrice
+// Exported helpers: addFirstItemToCart, goToCart, getCartItemPrice, getFirstItemTitle, getFirstItemPrice, login, logout, getFirstInventoryItem
 
 export async function addFirstItemToCart(page) {
   const addButton = page.locator('.inventory_item').first().locator('button:has-text("Add to cart")');
@@ -27,21 +27,18 @@ export async function login(page, username, password) {
   await page.fill('[data-test="username"]', username);
   await page.fill('[data-test="password"]', password);
   await page.click('[data-test="login-button"]');
+  await page.waitForURL(/.*\/inventory\.html$/);
 }
 
 export async function logout(page) {
   await page.click('#react-burger-menu-btn');
   await page.click('[data-test="logout-sidebar-link"]');
+  await page.waitForURL(/.*\/$/);
 }
 
-export async function getInventoryItem(page, index = 0) {
-  return page.locator('.inventory_item').nth(index);
-}
-
-export async function getItemTitle(item) {
-  return item.locator('.inventory_item_name').textContent();
-}
-
-export async function getItemPrice(item) {
-  return item.locator('.inventory_item_price').textContent();
+export async function getFirstInventoryItem(page) {
+  const item = page.locator('.inventory_item').first();
+  const title = await item.locator('.inventory_item_name').textContent();
+  const price = await item.locator('.inventory_item_price').textContent();
+  return { title: title.trim(), price: price.trim() };
 }
