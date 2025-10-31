@@ -184,23 +184,38 @@ export async function saveTestFilesForSingleCase(id) {
     throw new Error("Código utils possui erro de sintaxe, gravação abortada.");
   }
 
-  // Write the final utils.js
-  fs.writeFileSync(utilsPath, preparedUtils.trim() + "\n", "utf-8");
-
-  // Grava ficheiro do teste Playwright
+  // Antes de gravar, verificar se os ficheiros já existem e removê-los
   const filename = tc.title
     .toLowerCase()
     .replace(/\s+/g, "_")
     .replace(/[^a-z0-9_]/g, "");
 
   const filePath = path.join(testsDir, `${filename}.spec.js`);
+  const stepsPath = path.join(testsDir, `${filename}_manual_steps.json`);
+
+  // Remove existing files to ensure clean state
+  if (fs.existsSync(filePath)) {
+    console.log(`🗑️ Removing existing test file: ${filePath}`);
+    fs.unlinkSync(filePath);
+  }
+  if (fs.existsSync(stepsPath)) {
+    console.log(`🗑️ Removing existing manual steps file: ${stepsPath}`);
+    fs.unlinkSync(stepsPath);
+  }
+
+  // Write new test file
+  console.log(`📝 Writing new test file: ${filePath}`);
   fs.writeFileSync(filePath, playwrightCode, "utf-8");
 
-  // Passos manuais, se existirem
+  // Write new manual steps if they exist
   if (tc.manualSteps && tc.manualSteps.length) {
-    const stepsPath = path.join(testsDir, `${filename}_manual_steps.json`);
+    console.log(`📝 Writing new manual steps file: ${stepsPath}`);
     fs.writeFileSync(stepsPath, JSON.stringify(tc.manualSteps, null, 2), "utf-8");
   }
+
+  // Update utils.js with merged content
+  console.log(`📝 Updating utils.js with new helpers`);
+  fs.writeFileSync(utilsPath, preparedUtils.trim() + "\n", "utf-8");
 
   // Upload GitHub (mantém tua lógica)
   console.log(`📤 A enviar ficheiros do teste #${id} (${filename}.spec.js) para o GitHub...`);
