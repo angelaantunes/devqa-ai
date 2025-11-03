@@ -1,7 +1,0 @@
-[
-  "Open the page https://www.saucedemo.com/",
-  "Enter 'locked_out_user' in the Username field",
-  "Enter 'secret_sauce' in the Password field",
-  "Click the Login button",
-  "Verify the error message is displayed"
-]

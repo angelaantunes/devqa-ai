@@ -1,7 +1,0 @@
-[
-  "Open the page https://www.saucedemo.com/",
-  "Enter 'standard_user' in the Username input",
-  "Enter 'secret_sauce' in the Password input",
-  "Click the Login button",
-  "Verify that the URL is https://www.saucedemo.com/inventory.html"
-]
