@@ -32,7 +32,7 @@ export async function getCartItemPrice(page) {
 }
 
 export async function login(page, username, password) {
-  await page.getByPlaceholder('Username').fill(username);
-  await page.getByPlaceholder('Password').fill(password);
-  await page.getByRole('button', { name: 'Login' }).click();
+  await page.fill('input[placeholder="Username"]', username);
+  await page.fill('input[placeholder="Password"]', password);
+  await page.click('input[type="submit"][value="Login"]');
 }
