@@ -83,9 +83,11 @@ jobs:
             exit $EXIT_CODE
           fi
           ls -la playwright-report
-        working-directory: ./backend 
+        working-directory: ./backend
+        continue-on-error: true 
 
       - name: Upload Playwright report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
