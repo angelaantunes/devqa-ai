@@ -272,7 +272,7 @@ export async function generateTestForSingleCase(req, res) {
 
     // 🚀 Upload automático para GitHub
     try {
-      await uploadTestFileToGitHub(filePath, "generated_tests.json", `update test case #${number}`);
+      await uploadTestFileToGitHub(filePath, "backend/generated_tests.json", `update test case #${number}`);
     } catch (err) {
       console.error("⚠️ Falha ao enviar ficheiro atualizado para GitHub:", err.message);
     }

@@ -87,7 +87,7 @@ export async function runSinglePlaywrightTestController(req, res) {
 
     const isRender = process.env.RENDER === "true" || process.env.ONLINE_MODE === "true"
 
-    const generatedPath = path.join(process.cwd(), "backend/generated_tests.json")
+    const generatedPath = path.join(process.cwd(), "generated_tests.json")
     const allData = JSON.parse(fs.readFileSync(generatedPath, "utf-8"))
     const found = allData.find((item) => {
       const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1]
