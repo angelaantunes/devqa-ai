@@ -1,10 +1,4 @@
-// Exported helpers: login, logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice
-
-export async function login(page, username, password) {
-  await page.fill('[data-test="username"]', username);
-  await page.fill('[data-test="password"]', password);
-  await page.click('[data-test="login-button"]');
-}
+// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, login
 
 export async function logout(page) {
   await page.click('#react-burger-menu-btn');
@@ -35,4 +29,10 @@ export async function goToCart(page) {
 export async function getCartItemPrice(page) {
   // Assumes single item in cart; adjust selector if needed
   return await page.locator('.inventory_item_price').first().textContent();
+}
+
+export async function login(page, username, password) {
+  await page.getByPlaceholder('Username').fill(username);
+  await page.getByPlaceholder('Password').fill(password);
+  await page.getByRole('button', { name: 'Login' }).click();
 }
