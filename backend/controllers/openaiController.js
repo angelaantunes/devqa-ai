@@ -3,7 +3,7 @@ import { generateTestsForCase } from "../services/openaiService.js"
 import fs from "fs"
 import path from "path"
 import { saveGeneratedTestsAsFiles, saveTestFilesForSingleCase } from "../services/saveTestsService.js"
-
+import { uploadTestFileToGitHub } from "../services/githubFileService.js";
 // Generate Playwright test for a single test case by index or id
 /*export async function generateTestForSingleCaseCustom(req, res) {
   try {
@@ -234,7 +234,7 @@ export async function generateTestForSingleCase(req, res) {
     // Chama o serviço OpenAI
     const aiResult = await generateTestsForCase({ ...testCase, customPrompt: prompt });
     const result = {
-      number: testCase.number,
+      number: Number(testCase.number),
       title: testCase.title,
       url: testCase.url,
       utilsCode: aiResult.utilsCode || "",
@@ -258,15 +258,24 @@ export async function generateTestForSingleCase(req, res) {
     }
 
     // Atualizar ou adicionar o teste
-    const existingIndex = existingTests.findIndex(tc => tc.number === number);
+    const existingIndex = existingTests.findIndex(tc => Number(tc.number) === Number(number));
     if (existingIndex >= 0) {
       existingTests[existingIndex] = result;
+      console.log(`📝 Teste #${number} atualizado no ficheiro.`);
     } else {
       existingTests.push(result);
+      console.log(`➕ Teste #${number} adicionado ao ficheiro.`);
     }
 
     // Gravar no ficheiro
     fs.writeFileSync(filePath, JSON.stringify(existingTests, null, 2));
+
+    // 🚀 Upload automático para GitHub
+    try {
+      await uploadTestFileToGitHub(filePath, "generated_tests.json", `update test case #${number}`);
+    } catch (err) {
+      console.error("⚠️ Falha ao enviar ficheiro atualizado para GitHub:", err.message);
+    }
 
     // Responder com o novo resultado
     res.json(result);
