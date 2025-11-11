@@ -2,7 +2,7 @@ import { runPlaywrightTests, runSinglePlaywrightTest, runRemotePlaywrightTest } 
 import { uploadTestFileToGitHub, uploadAllGeneratedTestsToGitHub } from "../services/githubFileService.js"
 import fs from "fs"
 import path from 'path';
-import { setPending, getStatus } from "./utils/executionStatus.js";
+import { setPending, getStatus } from "../utils/executionStatus.js";
 
 export async function runTestsAndGetReport(req, res) {
   try {
