@@ -220,13 +220,24 @@ export async function runRemotePlaywrightTest(testName) {
   const artifacts = await getArtifacts(runId, repo, token);
   const reportUrl = findReportUrl(artifacts, repo);
 
-  return {
+  /*return {
+    testName,
+    conclusion,
+    runUrl: `https://github.com/${repo}/actions/runs/${runId}`,
+    reportUrl,
+    publishedUrl: `https://${repo.split('/')[0]}.github.io/${repo.split('/')[1]}/${testName}.html`,
+  };*/
+
+  const result = {
     testName,
     conclusion,
     runUrl: `https://github.com/${repo}/actions/runs/${runId}`,
     reportUrl,
     publishedUrl: `https://${repo.split('/')[0]}.github.io/${repo.split('/')[1]}/${testName}.html`,
   };
+  // Atualiza estado na RAM
+  setCompleted(testName, result);
+  return result;
 }
 
 // --- mantem estas funções tal como estavam (sem /devqa-ai extra)
