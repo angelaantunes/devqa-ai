@@ -4,18 +4,18 @@
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
     "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"][value=\"Login\"]');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n});",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n});",
     "manualSteps": [
       "1. Open a browser and navigate to https://www.saucedemo.com/",
-      "2. Verify that the page title is 'Swag Labs' and both username and password fields are visible.",
-      "3. Click inside the Username input field (placeholder='Username').",
-      "4. Type the exact text standard_user into the Username field and confirm the value is entered correctly.",
-      "5. Click inside the Password input field (placeholder='Password').",
-      "6. Type the exact text secret_sauce into the Password field (value will be masked).",
-      "7. Click the Login button.",
-      "8. Wait for the browser to load the next page.",
-      "9. Verify the URL is https://www.saucedemo.com/inventory.html.",
-      "10. Confirm that the inventory page header (e.g., 'Products') is displayed, indicating a successful login."
+      "2. Wait until the login form is fully loaded (both Username and Password fields are visible)",
+      "3. Locate the Username input field (placeholder=\"Username\")",
+      "4. Clear any pre-filled text and type standard_user",
+      "5. Locate the Password input field (placeholder=\"Password\")",
+      "6. Clear any pre-filled text and type secret_sauce",
+      "7. Locate the Login button",
+      "8. Click the Login button",
+      "9. Wait for the URL to change to https://www.saucedemo.com/inventory.html",
+      "10. Verify that the inventory page is displayed (e.g., page title or a unique element on the inventory page is visible)"
     ]
   }
 ]
