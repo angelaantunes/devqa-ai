@@ -1,4 +1,9 @@
-// Exported helpers: getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, login, logout
+// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, login
+
+export async function logout(page) {
+  await page.click('#react-burger-menu-btn');
+  await page.click('[data-test="logout-sidebar-link"]');
+}
 
 export async function getFirstItemTitle(page) {
   return await page.locator('.inventory_item').first().locator('.inventory_item_name').innerText();
@@ -27,13 +32,7 @@ export async function getCartItemPrice(page) {
 }
 
 export async function login(page, username, password) {
-  await page.fill('[data-test="username"]', username);
-  await page.fill('[data-test="password"]', password);
-  await page.click('[data-test="login-button"]');
-}
-
-export async function logout(page) {
-  await page.click('#react-burger-menu-btn');
-  await page.click('[data-test="logout-sidebar-link"]');
-  await page.waitForURL('https://www.saucedemo.com/');
+  await page.fill('input[placeholder="Username"]', username);
+  await page.fill('input[placeholder="Password"]', password);
+  await page.click('input[type="submit"][value="Login"], button:has-text("Login")');
 }
