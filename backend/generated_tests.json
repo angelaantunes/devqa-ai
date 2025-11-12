@@ -3,24 +3,21 @@
     "number": 1,
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n  await expect(page).toHaveURL('https://www.saucedemo.com/');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login with standard_user', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n});",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n  await page.waitForURL('**/inventory.html');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n  await page.waitForURL('**/');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Login flow', () => {\n  test('successful login with standard_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await expect(page).toHaveTitle(/Swag Labs/);\n\n    await login(page, 'standard_user', 'secret_sauce');\n\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n    await expect(page.locator('.title')).toHaveText('Products');\n  });\n});",
     "manualSteps": [
-      "1. Open a new browser tab and navigate to https://www.saucedemo.com/",
-      "2. Wait until the login form is fully rendered (both username and password fields are visible)",
-      "3. Locate the username input field by its placeholder text 'Username'",
-      "4. Click inside the username field to focus it",
-      "5. Clear any pre-filled value (if present)",
-      "6. Type the exact string 'standard_user' into the username field",
-      "7. Locate the password input field by its placeholder text 'Password'",
-      "8. Click inside the password field to focus it",
-      "9. Clear any pre-filled value (if present)",
-      "10. Type the exact string 'secret_sauce' into the password field",
-      "11. Locate the Login button (text equals 'Login')",
-      "12. Click the Login button",
-      "13. Wait for the browser to complete navigation",
-      "14. Verify the current URL is exactly https://www.saucedemo.com/inventory.html",
-      "15. Verify that the inventory page header or a unique element (e.g., 'Products' title) is visible to confirm successful login"
+      "1. Open a clean browser instance (Chrome/Firefox/Edge) in incognito/private mode.",
+      "2. Navigate to https://www.saucedemo.com/ and verify the page title equals 'Swag Labs'.",
+      "3. Locate the Username input field (placeholder='Username') and confirm it is empty and enabled.",
+      "4. Enter the exact text standard_user into the Username field and verify the value is displayed correctly.",
+      "5. Locate the Password input field (placeholder='Password') and confirm it is empty and enabled.",
+      "6. Enter the exact text secret_sauce into the Password field and verify the value is masked.",
+      "7. Locate the Login button and confirm it is visible and enabled.",
+      "8. Click the Login button and wait for the browser to process the request.",
+      "9. Verify the URL changes to https://www.saucedemo.com/inventory.html.",
+      "10. Confirm the inventory page header (class='title') displays the text 'Products'.",
+      "11. Capture a screenshot of the inventory page for evidence.",
+      "12. Log out via the burger-menu → Logout to return to the login page and confirm the session is terminated."
     ]
   }
 ]
