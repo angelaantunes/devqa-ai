@@ -3,19 +3,23 @@
     "number": 1,
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('text=Logout');\n}\n\nexport async function waitForPageLoad(page, urlSubstring) {\n  await page.waitForURL(`**/${urlSubstring}**`);\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user should land on inventory page', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await expect(page).toHaveTitle(/Swag Labs/);\n\n  await login(page, 'standard_user', 'secret_sauce');\n\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('.inventory_list')).toBeVisible();\n});",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n  await page.waitForURL('https://www.saucedemo.com/');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Login Flow', () => {\n  test('successful login with standard_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n    await expect(page.locator('[data-test=\"title\"]')).toContainText('Products');\n  });\n});",
     "manualSteps": [
       "1. Open a clean browser instance (Chrome/Firefox/Edge) in incognito/private mode.",
-      "2. Navigate to https://www.saucedemo.com/ and verify the page title equals 'Swag Labs'.",
-      "3. Locate the Username input field (placeholder='Username') and confirm it is empty and enabled.",
-      "4. Enter the exact text standard_user into the Username field and verify the value is displayed correctly.",
-      "5. Locate the Password input field (placeholder='Password') and confirm it is empty and masked.",
-      "6. Enter the exact text secret_sauce into the Password field and verify the value is masked.",
-      "7. Locate the Login button and confirm it is visible and enabled.",
-      "8. Click the Login button and verify no JavaScript errors appear in the console.",
-      "9. Wait for the URL to change to https://www.saucedemo.com/inventory.html and confirm the page title is 'Swag Labs'.",
-      "10. Verify that the inventory container (.inventory_list) is visible, confirming successful login."
+      "2. Navigate to https://www.saucedemo.com/ and verify the page loads completely (check that the login form is visible).",
+      "3. Locate the Username input field (placeholder=\"Username\").",
+      "4. Clear any pre-filled text and type exactly: standard_user",
+      "5. Verify the typed value appears in the field.",
+      "6. Locate the Password input field (placeholder=\"Password\").",
+      "7. Clear any pre-filled text and type exactly: secret_sauce",
+      "8. Verify the typed value is masked (dots/asterisks).",
+      "9. Locate the Login button (text=\"Login\").",
+      "10. Click the Login button.",
+      "11. Wait for the browser to finish navigation.",
+      "12. Verify the URL is now https://www.saucedemo.com/inventory.html.",
+      "13. Verify the inventory page header (e.g., \"Products\") is visible.",
+      "14. Log the test result as PASS if all assertions pass; otherwise FAIL with screenshots."
     ]
   }
 ]
