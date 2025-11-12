@@ -109,6 +109,8 @@ function TestCasesSection({ testCases: initialTestCases }) {
   }*/
 
   const handleRunTest = async (id, filename) => {
+
+    console.log("RunTest called", { id, filename });
     setTestResults((prev) => ({ ...prev, [id]: { loading: true } }))
 
     if (!filename) {
