@@ -200,11 +200,19 @@ export async function runRemotePlaywrightTest(testName) {
     polls++
     const resp = await fetch(`${GITHUB_API}/repos/${repo}/actions/runs/${runId}`, { headers: { Authorization: `Bearer ${token}` } })
     const runData = await resp.json()
+
+    console.log(`Poll ${polls}: status=${runData.status}, conclusion=${runData.conclusion}`);
+
     if (runData.status === "completed") {
       conclusion = runData.conclusion
       break
-    }
-    await new Promise((res) => setTimeout(res, 3000))
+    }else if (runData.status === "queued" || runData.status === "in_progress") {
+    // Ainda em execução, espera e repete o polling
+    await new Promise((res) => setTimeout(res, 3000));
+  } else {
+    // Caso de estados inesperados, podes lançar erro ou esperar também
+    await new Promise((res) => setTimeout(res, 3000));
+  }
   }
   if (conclusion === null) throw new Error("Timeout aguardando finalização do run")
 
