@@ -271,7 +271,7 @@ function findReportUrl(artifacts, repo) {
 }
 
 // Helper para esperar que o report novo esteja disponível
-export async function waitForReportUpdate(publishedUrl, maxWait = 60) {
+/*export async function waitForReportUpdate(publishedUrl, maxWait = 60) {
   let waited = 0
   let lastModified = null
   while (waited < maxWait) {
@@ -291,4 +291,34 @@ export async function waitForReportUpdate(publishedUrl, maxWait = 60) {
     waited += 2
   }
   return false // timeout
+}*/
+export async function waitForReportUpdate(publishedUrl, maxWaitSeconds = 60, intervalMs = 5000) {
+  let waited = 0;
+  let lastModified = null;
+
+  const options = {
+    method: "HEAD",
+    headers: lastModified ? { "If-Modified-Since": lastModified } : {}
+  };
+
+  while (waited < maxWaitSeconds) {
+    try {
+      const resp = await fetch(publishedUrl, options);
+      if (resp.ok) {
+        const mod = resp.headers.get("last-modified");
+        // Termina o polling se detecta modificacao ou se mod existe e mudou
+        if (mod && mod !== lastModified) {
+          return true;
+        }
+        lastModified = mod;
+      } else if (resp.status === 304) {
+        // Não modificado, continua polling
+      }
+    } catch (err) {
+      // ignore erro temporário (file não disponível ainda etc)
+    }
+    await new Promise(res => setTimeout(res, intervalMs));
+    waited += intervalMs / 1000;
+  }
+  return false; // timeout
 }
