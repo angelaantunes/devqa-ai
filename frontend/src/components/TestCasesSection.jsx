@@ -335,7 +335,7 @@ function TestCasesSection({ testCases: initialTestCases }) {
               // </Button>
               <div style={{ marginTop: "20px" }}>
                 <Typography variant="h6">Full Report</Typography>
-                <iframe src={testResults[tc.number].publishedUrl} style={{ width: "100%", height: "600px", border: "1px solid #ccc" }} title="Relatório Playwright" />
+                <iframe src={`${testResults[tc.number].publishedUrl}?ts=${Date.now()}`} style={{ width: "100%", height: "600px", border: "1px solid #ccc" }} title="Relatório Playwright" />
               </div>
             )}
           </AccordionDetails>
