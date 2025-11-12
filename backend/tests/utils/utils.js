@@ -1,9 +1,4 @@
-// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, login
-
-export async function logout(page) {
-  await page.click('#react-burger-menu-btn');
-  await page.click('[data-test="logout-sidebar-link"]');
-}
+// Exported helpers: getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, login, logout, waitForPageLoad
 
 export async function getFirstItemTitle(page) {
   return await page.locator('.inventory_item').first().locator('.inventory_item_name').innerText();
@@ -34,5 +29,14 @@ export async function getCartItemPrice(page) {
 export async function login(page, username, password) {
   await page.fill('input[placeholder="Username"]', username);
   await page.fill('input[placeholder="Password"]', password);
-  await page.click('input[type="submit"][value="Login"]');
+  await page.click('input[type="submit"]');
+}
+
+export async function logout(page) {
+  await page.click('#react-burger-menu-btn');
+  await page.click('text=Logout');
+}
+
+export async function waitForPageLoad(page, urlSubstring) {
+  await page.waitForURL(`**/${urlSubstring}**`);
 }
