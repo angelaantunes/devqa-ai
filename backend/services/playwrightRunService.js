@@ -164,85 +164,93 @@ export async function runRemotePlaywrightTest(testName) {
   const token = process.env.GITHUB_TOKEN
   const GITHUB_API = process.env.GITHUB_API || "https://api.github.com"
 
-  // Disparar workflow (mantém)
-  let dispatchResp = await fetch(`${GITHUB_API}/repos/${repo}/actions/workflows/playwright.yml/dispatches`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-    },
-    body: JSON.stringify({ ref: "main", inputs: { filename: testName } }),
-  })
-  if (!dispatchResp.ok) {
-    throw new Error(`Erro ao disparar workflow: ${await dispatchResp.text()}`)
-  }
+  // 1. Marca o timestamp imediatamente antes do dispatch
+  const dispatchStart = new Date();
 
-  // Polling para run iniciado (mantém)
-  let runId
-  let polls = 0
-  const maxPolls = 60
-
-  while (!runId && polls < maxPolls) {
-    polls++
-    const runResp = await fetch(`${GITHUB_API}/repos/${repo}/actions/runs?event=workflow_dispatch&branch=main`, { headers: { Authorization: `Bearer ${token}` } })
-    const data = await runResp.json()
-    if (data.workflow_runs && data.workflow_runs.length > 0) {
-      runId = data.workflow_runs[0].id
-      break
+  // 2. Disparar workflow
+  let dispatchResp = await fetch(
+    `${GITHUB_API}/repos/${repo}/actions/workflows/playwright.yml/dispatches`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+      },
+      body: JSON.stringify({ ref: "main", inputs: { filename: testName } }),
     }
-    await new Promise((res) => setTimeout(res, 1000))
+  );
+  if (!dispatchResp.ok) {
+    throw new Error(`Erro ao disparar workflow: ${await dispatchResp.text()}`);
   }
-  if (!runId) throw new Error("Não foi possível encontrar workflow run")
 
-  // Polling até conclusão (mantém)
-  let conclusion = null
+  // 3. Polling para encontrar o run certo (timestamp + branch + evento)
+  let runId;
+  let polls = 0;
+  const maxPolls = 60;
+  while (!runId && polls < maxPolls) {
+    polls++;
+    const runResp = await fetch(
+      `${GITHUB_API}/repos/${repo}/actions/runs?event=workflow_dispatch&branch=main&per_page=10`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const data = await runResp.json();
+    // Filtra pelo run mais recente criado após o dispatch e com nome correto
+    const candidate = data.workflow_runs.find((run) => {
+      const runCreated = new Date(run.created_at);
+      return (
+        runCreated >= dispatchStart &&
+        run.head_branch === "main" &&
+        run.event === "workflow_dispatch"
+      );
+    });
+    if (candidate) {
+      runId = candidate.id;
+      break;
+    }
+    await new Promise((res) => setTimeout(res, 1000));
+  }
+  if (!runId) throw new Error("Não foi possível encontrar workflow run disparado");
+
+  // 4. Polling até conclusão efetiva do run correto
+  let conclusion = null;
+  polls = 0; // reinicia polling
   while (conclusion === null && polls < maxPolls) {
-    polls++
-    const resp = await fetch(`${GITHUB_API}/repos/${repo}/actions/runs/${runId}`, { headers: { Authorization: `Bearer ${token}` } })
-    const runData = await resp.json()
-
-    console.log(`Poll ${polls}: status=${runData.status}, conclusion=${runData.conclusion}`);
+    polls++;
+    const resp = await fetch(
+      `${GITHUB_API}/repos/${repo}/actions/runs/${runId}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const runData = await resp.json();
+    console.log(`Poll ${polls}: status=${runData.status}, conclusion=${runData.conclusion}, id=${runId}`);
 
     if (runData.status === "completed") {
-      conclusion = runData.conclusion
-      break
-    }else if (runData.status === "queued" || runData.status === "in_progress") {
-    // Ainda em execução, espera e repete o polling
-    await new Promise((res) => setTimeout(res, 3000));
-  } else {
-    // Caso de estados inesperados, podes lançar erro ou esperar também
+      conclusion = runData.conclusion;
+      break;
+    }
     await new Promise((res) => setTimeout(res, 3000));
   }
-  }
-  if (conclusion === null) throw new Error("Timeout aguardando finalização do run")
+  if (conclusion === null) throw new Error("Timeout aguardando finalização do run");
 
-  // Obter artifact
-  const artifacts = await getArtifacts(runId, repo, token)
-  const reportUrl = findReportUrl(artifacts, repo)
+  // 5. Obter artifact e published report URL
+  const artifacts = await getArtifacts(runId, repo, token);
+  const reportUrl = findReportUrl(artifacts, repo);
+  const publishedUrl = `https://${repo.split("/")[0]}.github.io/${repo.split("/")[1]}/${testName}.html`;
 
-  /*return {
-    testName,
-    conclusion,
-    runUrl: `https://github.com/${repo}/actions/runs/${runId}`,
-    reportUrl,
-    publishedUrl: `https://${repo.split('/')[0]}.github.io/${repo.split('/')[1]}/${testName}.html`,
-  };*/
-  const publishedUrl = `https://${repo.split("/")[0]}.github.io/${repo.split("/")[1]}/${testName}.html`
+  // 6. Esperar pelo upload do novo report (cache freshness)
+  await waitForReportUpdate(publishedUrl, 60);
 
-  // Espera efetivamente pela atualização do report
-  await waitForReportUpdate(publishedUrl, 60)
-
+  // 7. Atualiza estado do run para o testName e retorna ao controller
   const result = {
     testName,
     conclusion,
     runUrl: `https://github.com/${repo}/actions/runs/${runId}`,
     reportUrl,
-    publishedUrl, //: `https://${repo.split('/')[0]}.github.io/${repo.split('/')[1]}/${testName}.html`,
-  }
-  // Atualiza estado na RAM
-  setCompleted(testName, result)
-  return result
+    publishedUrl,
+  };
+  setCompleted(testName, result);
+  return result;
 }
+
 
 // --- mantem estas funções tal como estavam (sem /devqa-ai extra)
 async function getArtifacts(runId, repo, token) {
