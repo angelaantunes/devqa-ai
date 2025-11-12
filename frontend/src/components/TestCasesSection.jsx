@@ -111,6 +111,14 @@ function TestCasesSection({ testCases: initialTestCases }) {
   const handleRunTest = async (id, filename) => {
     setTestResults((prev) => ({ ...prev, [id]: { loading: true } }))
 
+    if (!filename) {
+      setTestResults((prev) => ({
+        ...prev,
+        [id]: { loading: false, error: "Ficheiro não disponível! Salva antes o teste." },
+      }))
+      return
+    }
+
     // Dispara o teste remotamente
     try {
       const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`)
