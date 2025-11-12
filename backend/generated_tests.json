@@ -3,19 +3,19 @@
     "number": 1,
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"][value=\"Login\"]');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n});",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('text=Logout');\n}\n\nexport async function waitForPageLoad(page, urlSubstring) {\n  await page.waitForURL(`**/${urlSubstring}**`);\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user should land on inventory page', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await expect(page).toHaveTitle(/Swag Labs/);\n\n  await login(page, 'standard_user', 'secret_sauce');\n\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('.inventory_list')).toBeVisible();\n});",
     "manualSteps": [
-      "1. Open a browser and navigate to https://www.saucedemo.com/",
-      "2. Wait until the login form is fully loaded (both Username and Password fields are visible)",
-      "3. Locate the Username input field (placeholder=\"Username\")",
-      "4. Clear any pre-filled text and type standard_user",
-      "5. Locate the Password input field (placeholder=\"Password\")",
-      "6. Clear any pre-filled text and type secret_sauce",
-      "7. Locate the Login button",
-      "8. Click the Login button",
-      "9. Wait for the URL to change to https://www.saucedemo.com/inventory.html",
-      "10. Verify that the inventory page is displayed (e.g., page title or a unique element on the inventory page is visible)"
+      "1. Open a clean browser instance (Chrome/Firefox/Edge) in incognito/private mode.",
+      "2. Navigate to https://www.saucedemo.com/ and verify the page title equals 'Swag Labs'.",
+      "3. Locate the Username input field (placeholder='Username') and confirm it is empty and enabled.",
+      "4. Enter the exact text standard_user into the Username field and verify the value is displayed correctly.",
+      "5. Locate the Password input field (placeholder='Password') and confirm it is empty and masked.",
+      "6. Enter the exact text secret_sauce into the Password field and verify the value is masked.",
+      "7. Locate the Login button and confirm it is visible and enabled.",
+      "8. Click the Login button and verify no JavaScript errors appear in the console.",
+      "9. Wait for the URL to change to https://www.saucedemo.com/inventory.html and confirm the page title is 'Swag Labs'.",
+      "10. Verify that the inventory container (.inventory_list) is visible, confirming successful login."
     ]
   }
 ]
