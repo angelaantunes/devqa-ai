@@ -24,18 +24,20 @@
     "scenario": "positive",
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"][value=\"Login\"]');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n});",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('.title')).toHaveText('Products');\n});",
     "manualSteps": [
-      "Navigate to https://www.saucedemo.com/ and wait until the login form is fully rendered.",
-      "Locate the Username input field by its placeholder attribute 'Username'.",
-      "Enter the exact text standard_user into the Username field.",
-      "Locate the Password input field by its placeholder attribute 'Password'.",
-      "Enter the exact text secret_sauce into the Password field.",
-      "Locate the Login button and click it.",
-      "Wait for the browser to finish navigation.",
-      "Verify the URL is now https://www.saucedemo.com/inventory.html.",
-      "Verify the page title or a unique element on the inventory page is visible to confirm successful login."
+      "Navigate to https://www.saucedemo.com/",
+      "Verify that the page title is 'Swag Labs'",
+      "Locate the Username input field (placeholder='Username')",
+      "Enter the text 'standard_user' into the Username field",
+      "Locate the Password input field (placeholder='Password')",
+      "Enter the text 'secret_sauce' into the Password field",
+      "Locate the Login button",
+      "Click the Login button",
+      "Wait for the URL to change to https://www.saucedemo.com/inventory.html",
+      "Verify that the new page URL is https://www.saucedemo.com/inventory.html",
+      "Verify that the page contains the text 'Products' in the header"
     ]
   },
   {
