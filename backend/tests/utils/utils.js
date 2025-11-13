@@ -1,4 +1,4 @@
-// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, login
+// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, login, loginWithCredentials, getErrorMessage
 
 export async function logout(page) {
   await page.click('#react-burger-menu-btn');
@@ -35,4 +35,16 @@ export async function login(page, username, password) {
   await page.fill('input[placeholder="Username"]', username);
   await page.fill('input[placeholder="Password"]', password);
   await page.click('input[type="submit"][value="Login"], button:has-text("Login")');
+}
+
+export async function loginWithCredentials(page, username, password) {
+  await page.fill('input[placeholder="Username"]', username);
+  await page.fill('input[placeholder="Password"]', password);
+  await page.click('input[type="submit"]');
+}
+
+export async function getErrorMessage(page) {
+  const errorLocator = page.locator('[data-test="error"]');
+  await errorLocator.waitFor({ state: 'visible' });
+  return errorLocator.textContent();
 }
