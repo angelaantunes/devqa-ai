@@ -116,7 +116,7 @@ function TestCasesSection({ testCases: initialTestCases }) {
     setShowCustomPrompt((prev) => ({ ...prev, [number]: !prev[number] }))
   }
 
-  const handleSaveTest = async (id, idx) => {
+  /*const handleSaveTest = async (id, idx) => {
     setSaveLoadingId(id)
     try {
       const res = await axios.post(`${API_URL}/api/save-generated-tests/${id}`)
@@ -133,6 +133,32 @@ function TestCasesSection({ testCases: initialTestCases }) {
       alert("Erro ao guardar o teste!")
     }
     setSaveLoadingId(null)
+  }*/
+  const handleSaveTest = async (id, idx, scenario = "positive") => {
+    setSaveLoadingId(id)
+    try {
+      // Passa cenário para backend para salvar o teste correto
+      const res = await axios.post(`${API_URL}/api/save-generated-tests/${id}`, { scenario })
+
+      const updatedTestCases = [...testCases]
+      if (scenario === "positive") {
+        updatedTestCases[idx].positive = {
+          ...updatedTestCases[idx].positive,
+          filename: res.data.filename,
+        }
+      } else {
+        updatedTestCases[idx].negative = {
+          ...updatedTestCases[idx].negative,
+          filename: res.data.filename,
+        }
+      }
+
+      setTestCases(updatedTestCases)
+      alert(`✅ Teste ${scenario} guardado para este ticket!\nFicheiro: ${res.data.filename}`)
+    } catch (err) {
+      alert("Erro ao guardar o teste!")
+    }
+    setSaveLoadingId(null)
   }
 
   /*const handleRunTest = async (id) => {
@@ -145,7 +171,7 @@ function TestCasesSection({ testCases: initialTestCases }) {
     }
   }*/
 
-  const handleRunTest = async (id, filename) => {
+  /*const handleRunTest = async (id, filename) => {
     console.log("RunTest called", { id, filename })
     setTestResults((prev) => ({ ...prev, [id]: { loading: true } }))
 
@@ -170,9 +196,33 @@ function TestCasesSection({ testCases: initialTestCases }) {
     } catch (err) {
       setTestResults((prev) => ({ ...prev, [id]: { loading: false, error: err.message } }))
     }
+  }*/
+
+  const handleRunTest = async (id, filename, scenario = "positive") => {
+    console.log("RunTest called", { id, filename, scenario })
+    setTestResults((prev) => ({ ...prev, [`${id}-${scenario}`]: { loading: true } }))
+
+    if (!filename) {
+      setTestResults((prev) => ({
+        ...prev,
+        [`${id}-${scenario}`]: { loading: false, error: "Ficheiro não disponível! Salva antes o teste." },
+      }))
+      return
+    }
+
+    try {
+      const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`, { scenario })
+      if (res.data.status === "pending" && res.data.testName) {
+        pollTestStatus(`${id}-${scenario}`, res.data.testName)
+        return
+      }
+      setTestResults((prev) => ({ ...prev, [`${id}-${scenario}`]: { loading: false, ...res.data } }))
+    } catch (err) {
+      setTestResults((prev) => ({ ...prev, [`${id}-${scenario}`]: { loading: false, error: err.message } }))
+    }
   }
 
-  const pollTestStatus = async (id, filename) => {
+  /*const pollTestStatus = async (id, filename) => {
     let tries = 0
     const maxTries = 60
 
@@ -207,6 +257,43 @@ function TestCasesSection({ testCases: initialTestCases }) {
 
     if (tries >= maxTries) {
       setTestResults((prev) => ({ ...prev, [id]: { loading: false, error: "Timeout esperando resultado do teste." } }))
+    }
+  }*/
+
+  const pollTestStatus = async (key, filename) => {
+    let tries = 0
+    const maxTries = 60
+
+    while (tries < maxTries) {
+      tries++
+      try {
+        const res = await axios.get(`${API_URL}/api/test-status/${filename}`)
+        if (res.data.status === "pending") {
+          setTestResults((prev) => ({ ...prev, [key]: { loading: true } }))
+        } else if (res.data.status === "completed") {
+          setTestResults((prev) => ({
+            ...prev,
+            [key]: {
+              loading: false,
+              success: res.data.conclusion === "success",
+              publishedUrl: res.data.publishedUrl,
+              runUrl: res.data.runUrl,
+              reportUrl: res.data.reportUrl,
+              stdout: res.data.stdout,
+              stderr: res.data.stderr,
+            },
+          }))
+          break
+        }
+      } catch (err) {
+        setTestResults((prev) => ({ ...prev, [key]: { loading: false, error: err.message } }))
+        break
+      }
+      await new Promise((res) => setTimeout(res, 3000))
+    }
+
+    if (tries >= maxTries) {
+      setTestResults((prev) => ({ ...prev, [key]: { loading: false, error: "Timeout esperando resultado do teste." } }))
     }
   }
 
@@ -259,6 +346,19 @@ function TestCasesSection({ testCases: initialTestCases }) {
                 {saveLoadingId === tc.id ? "Saving..." : "Save files"}
               </Button>
             )}
+
+            {(tc.positive?.manualSteps || tc.positive?.playwrightCode || tc.positive?.utilsCode) && (
+              <Button variant="outlined" size="small" sx={{ mb: 2, ml: 2 }} onClick={() => handleSaveTest(tc.number, i, "positive")} disabled={saveLoadingId === tc.id}>
+                Save Positive Scenario Files
+              </Button>
+            )}
+
+            {(tc.negative?.manualSteps || tc.negative?.playwrightCode || tc.negative?.utilsCode) && (
+              <Button variant="outlined" size="small" sx={{ mb: 2, ml: 2 }} onClick={() => handleSaveTest(tc.number, i, "negative")} disabled={saveLoadingId === tc.id}>
+                Save Negative Scenario Files
+              </Button>
+            )}
+
             {(tc.manualSteps || tc.playwrightCode || tc.utilsCode) && (
               <Button
                 variant="contained"
@@ -269,6 +369,17 @@ function TestCasesSection({ testCases: initialTestCases }) {
                 disabled={saveLoadingId === tc.number}
               >
                 Run Test
+              </Button>
+            )}
+            {(tc.positive?.manualSteps || tc.positive?.playwrightCode || tc.positive?.utilsCode) && (
+              <Button variant="contained" color="success" size="small" sx={{ mb: 2, ml: 2 }} onClick={() => handleRunTest(tc.number, tc.positive?.filename, "positive")} disabled={saveLoadingId === tc.number}>
+                Run Test - Positive Scenario
+              </Button>
+            )}
+
+            {(tc.negative?.manualSteps || tc.negative?.playwrightCode || tc.negative?.utilsCode) && (
+              <Button variant="contained" color="error" size="small" sx={{ mb: 2, ml: 2 }} onClick={() => handleRunTest(tc.number, tc.negative?.filename, "negative")} disabled={saveLoadingId === tc.number}>
+                Run Test - Negative Scenario
               </Button>
             )}
 
