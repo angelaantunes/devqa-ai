@@ -25,44 +25,19 @@
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
     "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login with standard_user', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n});",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n});",
     "manualSteps": [
-      "Navigate to https://www.saucedemo.com/ and wait until the login form is fully rendered.",
-      "Locate the Username input field (placeholder=\"Username\") and enter the text standard_user.",
-      "Locate the Password input field (placeholder=\"Password\") and enter the text secret_sauce.",
-      "Click the Login button.",
-      "Wait for the browser URL to change to https://www.saucedemo.com/inventory.html.",
-      "Verify that the new page displays the text \"Products\" in the header (confirming successful login and landing on the inventory page)."
-    ]
-  },
-  {
-    "number": 1,
-    "scenario": "negative",
-    "title": "Test Login Successful",
-    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('#user-name', username);\n  await page.fill('#password', password);\n  await page.click('#login-button');\n}\n\nexport async function getErrorMessage(page) {\n  return await page.locator('[data-test=\"error\"]').textContent();\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Login Negative Flows', () => {\n  test.beforeEach(async ({ page }) => {\n    await page.goto('https://www.saucedemo.com');\n  });\n\n  test('should not allow locked-out user', async ({ page }) => {\n    await login(page, 'locked_out_user', 'secret_sauce');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Epic sadface: Sorry, this user has been locked out.');\n    await expect(page).toHaveURL('https://www.saucedemo.com/');\n  });\n\n  test('should require username', async ({ page }) => {\n    await login(page, '', 'secret_sauce');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Epic sadface: Username is required');\n    await expect(page).toHaveURL('https://www.saucedemo.com/');\n  });\n\n  test('should require password', async ({ page }) => {\n    await login(page, 'standard_user', '');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Epic sadface: Password is required');\n    await expect(page).toHaveURL('https://www.saucedemo.com/');\n  });\n\n  test('should not persist session after logout navigation', async ({ page }) => {\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n    await page.goBack();\n    await expect(page).toHaveURL('https://www.saucedemo.com/');\n    await expect(page.locator('#user-name')).toHaveValue('');\n    await expect(page.locator('#password')).toHaveValue('');\n  });\n});",
-    "manualSteps": [
-      "Navigate to https://www.saucedemo.com",
-      "Verify the page title is 'Swag Labs'",
+      "Navigate to https://www.saucedemo.com/",
+      "Verify the page title contains 'Swag Labs'",
       "Locate the Username input field with placeholder 'Username'",
       "Enter the text 'standard_user' into the Username field",
       "Locate the Password input field with placeholder 'Password'",
       "Enter the text 'secret_sauce' into the Password field",
       "Locate the Login button",
       "Click the Login button",
-      "Verify the URL is now https://www.saucedemo.com/inventory.html",
-      "Verify the page contains the text 'Products' (inventory page header)",
-      "Click the browser back button",
-      "Verify the user is redirected back to the login page (URL https://www.saucedemo.com)",
-      "Verify the Username and Password fields are empty (session should not persist)",
-      "Repeat steps 3-7 with invalid credentials (e.g., 'locked_out_user' / 'secret_sauce')",
-      "Verify an error message appears: 'Epic sadface: Sorry, this user has been locked out.'",
-      "Verify the URL remains https://www.saucedemo.com (no navigation)",
-      "Repeat steps 3-7 with empty username",
-      "Verify an error message appears: 'Epic sadface: Username is required'",
-      "Repeat steps 3-7 with empty password",
-      "Verify an error message appears: 'Epic sadface: Password is required'"
+      "Wait for the URL to change to https://www.saucedemo.com/inventory.html",
+      "Verify the current URL is https://www.saucedemo.com/inventory.html",
+      "Verify the page now shows the text 'Products' in the header"
     ]
   }
 ]
