@@ -39,5 +39,29 @@
       "Verify the current URL is https://www.saucedemo.com/inventory.html",
       "Verify the page now shows the text 'Products' in the header"
     ]
+  },
+  {
+    "number": 1,
+    "scenario": "negative",
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n}\n\nexport async function getErrorMessage(page) {\n  return await page.textContent('[data-test=\"error\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login, logout, getErrorMessage } from './utils.js';\n\ntest.describe('Login flow – negative path', () => {\n  test('Login with wrong password fails and keeps user on login page', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await expect(page).toHaveTitle(/Swag Labs/);\n\n    // positive path to ensure credentials work\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n    await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n\n    // logout to return to login page\n    await logout(page);\n\n    // negative path – wrong password\n    await login(page, 'standard_user', 'bad_pass');\n    const msg = await getErrorMessage(page);\n    expect(msg).toContain('Username and password do not match any user in this service');\n    await expect(page).toHaveURL('https://www.saucedemo.com/');\n  });\n});",
+    "manualSteps": [
+      "Navigate to https://www.saucedemo.com/",
+      "Verify the page title contains 'Swag Labs'",
+      "Locate the Username input field with placeholder 'Username'",
+      "Enter the text 'standard_user' into the Username field",
+      "Locate the Password input field with placeholder 'Password'",
+      "Enter the text 'secret_sauce' into the Password field",
+      "Click the 'Login' button",
+      "Verify the URL is now https://www.saucedemo.com/inventory.html",
+      "Verify the inventory page heading 'Products' is visible",
+      "Log out via the burger menu to return to the login page",
+      "Repeat steps 3-6 but replace the password with an incorrect value (e.g. 'bad_pass')",
+      "Click the 'Login' button",
+      "Verify the error message 'Epic sadface: Username and password do not match any user in this service' appears",
+      "Verify the URL is still https://www.saucedemo.com/ and the user is not logged in"
+    ]
   }
 ]
