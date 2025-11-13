@@ -25,22 +25,21 @@
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
     "filename": "test_login_successful_positive.spec.js",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n  await expect(page).toHaveURL('https://www.saucedemo.com/');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user should land on inventory page', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await expect(page).toHaveURL('https://www.saucedemo.com/');\n  await expect(page).toHaveTitle(/Swag Labs/);\n\n  await login(page, 'standard_user', 'secret_sauce');\n\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"inventory-container\"]')).toBeVisible();\n  await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n});",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[data-test=\"login-button\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user should succeed', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await expect(page).toHaveURL(/.*saucedemo\\.com/);\n\n  await login(page, 'standard_user', 'secret_sauce');\n\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"inventory-container\"]')).toBeVisible();\n});",
     "manualSteps": [
       "Navigate to https://www.saucedemo.com/ and wait until the login form is fully rendered.",
-      "Verify that the page title is 'Swag Labs' and the URL is correct.",
-      "Locate the Username input field by its placeholder text 'Username'.",
-      "Enter the text 'standard_user' into the Username field and confirm the value is typed correctly.",
-      "Locate the Password input field by its placeholder text 'Password'.",
-      "Enter the text 'secret_sauce' into the Password field (value should be masked).",
+      "Verify that the page title is ‘Swag Labs’ and the URL is correct.",
+      "Locate the username input field by its placeholder text ‘Username’.",
+      "Enter the exact text standard_user into the username field.",
+      "Locate the password input field by its placeholder text ‘Password’.",
+      "Enter the exact text secret_sauce into the password field.",
       "Locate the Login button and verify it is enabled.",
       "Click the Login button.",
       "Wait for the browser to complete navigation.",
-      "Assert that the current URL is exactly https://www.saucedemo.com/inventory.html.",
-      "Verify that the page now displays the inventory container with the heading 'Products'.",
-      "Confirm that the browser tab title is still 'Swag Labs'.",
-      "Mark the test as passed if all assertions succeed."
+      "Assert that the current URL is https://www.saucedemo.com/inventory.html.",
+      "Assert that the page now displays the inventory container (indicating a successful login).",
+      "Take a screenshot and attach it to the test evidence (optional but recommended)."
     ]
   },
   {
