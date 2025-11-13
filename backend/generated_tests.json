@@ -24,21 +24,20 @@
     "scenario": "positive",
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.getByPlaceholder('Username').fill(username);\n  await page.getByPlaceholder('Password').fill(password);\n  await page.click('input[type=\"submit\"]');\n  await page.waitForURL('https://www.saucedemo.com/inventory.html');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com');\n  await expect(page).toHaveTitle(/Swag Labs/);\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('h1')).toContainText('Products');\n});",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n});",
     "manualSteps": [
-      "Navigate to https://www.saucedemo.com",
-      "Verify the page title contains 'Swag Labs'",
-      "Locate the Username field (placeholder 'Username')",
-      "Enter the text 'standard_user' into the Username field",
-      "Locate the Password field (placeholder 'Password')",
-      "Enter the text 'secret_sauce' into the Password field",
-      "Click the 'Login' button",
-      "Wait for the URL to change to https://www.saucedemo.com/inventory.html",
-      "Verify the new page displays 'Products' heading",
-      "Confirm the browser tab title is 'Swag Labs'",
-      "Take a screenshot of the inventory page for evidence",
-      "Log 'Login successful' in the test report"
+      "Navigate to https://www.saucedemo.com/ and wait until the login form is fully rendered.",
+      "Verify that the page title is 'Swag Labs'.",
+      "Locate the username input field by its placeholder text 'Username'.",
+      "Enter the text 'standard_user' into the username field.",
+      "Locate the password input field by its placeholder text 'Password'.",
+      "Enter the text 'secret_sauce' into the password field.",
+      "Locate the Login button and verify it is enabled.",
+      "Click the Login button.",
+      "Wait for the URL to change to https://www.saucedemo.com/inventory.html.",
+      "Verify that the new page displays the text 'Products' in the header.",
+      "Confirm that the browser URL is exactly https://www.saucedemo.com/inventory.html."
     ]
   },
   {
@@ -59,6 +58,28 @@
       "Verify that the page title is 'Swag Labs' and that the primary heading 'Products' is visible.",
       "Verify that no error message banner is displayed.",
       "Repeat the test with intentionally wrong credentials (e.g., username locked_out_user and the same password) and confirm that an error message appears and the URL does NOT change to /inventory.html (negative check)."
+    ]
+  },
+  {
+    "number": 2,
+    "scenario": "positive",
+    "title": "Test User Locked",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/2",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"]');\n}\n\nexport async function assertErrorMessage(page, expectedText) {\n  const errorLocator = page.locator('[data-test=\"error\"]');\n  await errorLocator.waitFor({ state: 'visible' });\n  await expect(errorLocator).toHaveText(expectedText);\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login, assertErrorMessage } from './utils.js';\n\ntest('Locked user cannot log in and sees correct error', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'locked_out_user', 'secret_sauce');\n  await assertErrorMessage(page, 'Epic sadface: Sorry, this user has been locked out.');\n  await expect(page).toHaveURL('https://www.saucedemo.com/');\n});",
+    "manualSteps": [
+      "Navigate to https://www.saucedemo.com/",
+      "Wait until the login form is fully rendered",
+      "Locate the Username input field by its placeholder attribute 'Username'",
+      "Enter the exact text locked_out_user into the Username field",
+      "Locate the Password input field by its placeholder attribute 'Password'",
+      "Enter the exact text secret_sauce into the Password field",
+      "Locate the Login button",
+      "Click the Login button",
+      "Wait for the error container to appear",
+      "Assert that the error message text is exactly 'Epic sadface: Sorry, this user has been locked out.'",
+      "Take a screenshot of the error for evidence (optional)",
+      "Confirm that the user remains on the login page (URL still https://www.saucedemo.com/)"
     ]
   }
 ]
