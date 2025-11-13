@@ -208,7 +208,7 @@ export async function generateTestForSingleCase(req, res) {
       return res.status(404).json({ error: "Test case not found" });
     }
 
-    // Prompt para AI (INCLUIR instrução obrigatória de JSON para response_format tipo json_object)
+    // Monta o prompt para o cenário adequado
     let prompt = `
 You are a senior QA automation engineer. Given the following test case from a GitHub issue:
 Title: ${testCase.title}
@@ -218,44 +218,51 @@ Scenario: ${scenario === "positive" ? "positive" : "negative"}.
 Your tasks:
 1. Write a highly detailed, step-by-step list of manual test steps (in English) for a QA engineer.
 2. Generate robust Playwright test code in JavaScript ESM that automates the scenario.
-3. Identify any reusable actions and generate helper functions in ESM utils.js.
+3. Identify any reusable actions and generate helper functions ESM in utils.js.
 
-Return your response ONLY as a VALID JSON object, with three keys: manualSteps (array of strings), playwrightCode (string), utilsCode (string).
-Do NOT use markdown, comments, code blocks or extra text. Output ONLY strict JSON.
-If you cannot extract any test, respond with {}.
+Return ONLY a valid JSON object with keys manualSteps (array), playwrightCode (string), utilsCode (string).
+No markdown, no extra text, only JSON.
     `;
-
-    prompt += scenario === "positive"
-      ? `\nThe steps must assert the success path for the user.`
-      : `\nThe steps must assert the error/invalid path – the test should fail correctly if invalid data or unauthorized actions are performed.`;
-
+    if (scenario === "positive") {
+      prompt += `\nThe steps must assert the success path.`;
+    } else {
+      prompt += `\nThe steps must assert the error/invalid path.`;
+    }
     if (customPrompt) prompt += `\nAdditional instructions: ${customPrompt}`;
     if (extraData) prompt += `\nExtra context: ${extraData}`;
 
-    // Chama AI
+    // Gera com OpenAI
     const aiResult = await generateTestsForCase({ ...testCase, customPrompt: prompt });
 
-    // Estrutura resultado, incluindo cenário
+    // Aqui adiciona _positive ou _negative no nome do ficheiro
+    const suffix = scenario === "positive" ? "_positive" : "_negative";
+    const filenameBase = testCase.title.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+    const filename = `${filenameBase}${suffix}.spec.js`;
+
+    // Constrói o resultado com o filename distinto
     const result = {
       number: Number(testCase.number),
       scenario,
       title: testCase.title,
       url: testCase.url,
+      filename,  // nome do ficheiro distinto
       utilsCode: aiResult.utilsCode || "",
       playwrightCode: aiResult.playwrightCode || "",
       manualSteps: aiResult.manualSteps || [],
     };
 
-    // Lê/atualiza o ficheiro
+    // Lê o arquivo existente
     const filePath = path.resolve("generated_tests.json");
     let existingTests = [];
     if (fs.existsSync(filePath)) {
       try {
         existingTests = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-      } catch { existingTests = []; }
+      } catch {
+        existingTests = [];
+      }
     }
 
-    // Atualiza/adiciona o teste pelo número+cenário
+    // Atualiza/adiciona teste pelo número + cenário
     const existingIndex = existingTests.findIndex(tc =>
       Number(tc.number) === Number(number) && tc.scenario === scenario
     );
@@ -265,9 +272,10 @@ If you cannot extract any test, respond with {}.
       existingTests.push(result);
     }
 
+    // Salva no arquivo
     fs.writeFileSync(filePath, JSON.stringify(existingTests, null, 2));
 
-    // Upload para GitHub, opcional: inclui cenário no commit message
+    // Upload para GitHub (inclui cenário no commit)
     try {
       await uploadTestFileToGitHub(filePath, "backend/generated_tests.json", `update test case #${number} (${scenario})`);
     } catch (err) {
