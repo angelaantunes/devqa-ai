@@ -2,6 +2,7 @@ import { runPlaywrightTests, runSinglePlaywrightTest, runRemotePlaywrightTest } 
 import { uploadTestFileToGitHub, uploadAllGeneratedTestsToGitHub } from "../services/githubFileService.js"
 import fs from "fs"
 import path from 'path';
+import { setPending, getStatus } from "../utils/executionStatus.js";
 
 export async function runTestsAndGetReport(req, res) {
   try {
@@ -82,41 +83,44 @@ export async function runTestsAndGetReport(req, res) {
 
 export async function runSinglePlaywrightTestController(req, res) {
   try {
-    const { id } = req.params
-    console.log("🎯 Running test for ID:", id)
+    const { id } = req.params;
+    const isRender = process.env.RENDER === "true" || process.env.ONLINE_MODE === "true";
 
-    const isRender = process.env.RENDER === "true" || process.env.ONLINE_MODE === "true"
+    const generatedPath = path.join(process.cwd(), "generated_tests.json");
+    const allData = JSON.parse(fs.readFileSync(generatedPath, "utf-8"));
+    const found = allData.find(item => {
+      const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1];
+      return issueNumber === String(id);
+    });
 
-    const generatedPath = path.join(process.cwd(), "generated_tests.json")
-    const allData = JSON.parse(fs.readFileSync(generatedPath, "utf-8"))
-    const found = allData.find((item) => {
-      const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1]
-      return issueNumber === String(id)
-    })
+    if (!found?.title) throw new Error(`Título não encontrado para o issue ${id}`);
+    const filename = found.title.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") + ".spec.js";
 
-    if (!found?.title) throw new Error(`Título não encontrado para o issue ${id}`)
-
-    const filename =
-      found.title
-        .toLowerCase()
-        .replace(/\s+/g, "_")
-        .replace(/[^a-z0-9_]/g, "") + ".spec.js"
-
-    const result = isRender
-      ? await runRemotePlaywrightTest(filename) // ✅ agora envia o nome do ficheiro
-      : await runSinglePlaywrightTest(filename)
-
-    if (!result) {
-      return res.status(500).json({ error: "Erro inesperado: resultado vazio" })
+    // Se online/render, inicia execução async e devolve “pending”
+    if (isRender) {
+      const status = getStatus(filename);
+      if (!status || status.status !== "pending") {
+        setPending(filename);
+        runRemotePlaywrightTest(filename).catch(console.error);
+      }
+      return res.json({ status: "pending", testName: filename, message: "Test execution started" });
     }
-
-    res.json(result)
+    // Local: executa e devolve resultado direto
+    const result = await runSinglePlaywrightTest(filename);
+    return res.json(result);
   } catch (error) {
-    console.error("❌ Erro ao executar teste:", error)
     res.status(500).json({
       error: error.error || error.message,
       stdout: error.stdout?.trim(),
       stderr: error.stderr?.trim(),
-    })
+    });
   }
+}
+
+// Endpoint para consultar status/resultados do teste
+export function getTestStatusController(req, res) {
+  const { filename } = req.params;
+  const status = getStatus(filename);
+  if (!status) return res.status(404).json({ error: "Teste não encontrado ou não iniciado" });
+  res.json(status);
 }

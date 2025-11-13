@@ -108,41 +108,61 @@ function TestCasesSection({ testCases: initialTestCases }) {
     }
   }*/
 
-  const handleRunTest = async (id) => {
+  const handleRunTest = async (id, filename) => {
+
+    console.log("RunTest called", { id, filename });
     setTestResults((prev) => ({ ...prev, [id]: { loading: true } }))
+
+    if (!filename) {
+      setTestResults((prev) => ({
+        ...prev,
+        [id]: { loading: false, error: "Ficheiro não disponível! Salva antes o teste." },
+      }))
+      return
+    }
+
+    // Dispara o teste remotamente
+    try {
+      const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`)
+      // Resposta esperada: { status: "pending", testName: filename }
+      if (res.data.status === "pending" && res.data.testName) {
+        pollTestStatus(id, res.data.testName)
+        return
+      }
+      // Caso backend já esteja pronto, trata resultado normal (opcional para local)
+      setTestResults((prev) => ({ ...prev, [id]: { loading: false, ...res.data } }))
+    } catch (err) {
+      setTestResults((prev) => ({ ...prev, [id]: { loading: false, error: err.message } }))
+    }
+  }
+
+  const pollTestStatus = async (id, filename) => {
     let tries = 0
     const maxTries = 60
 
     while (tries < maxTries) {
       tries++
       try {
-        const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`)
-        const { conclusion, publishedUrl, runUrl } = res.data
-        if (conclusion === "completed" || conclusion === "success" || conclusion === "failure") {
+        const res = await axios.get(`${API_URL}/api/test-status/${filename}`)
+        // Espera resposta: { status: "pending"/"completed", reportUrl, publishedUrl, ... }
+        if (res.data.status === "pending") {
+          setTestResults((prev) => ({ ...prev, [id]: { loading: true } }))
+        } else if (res.data.status === "completed") {
           setTestResults((prev) => ({
             ...prev,
             [id]: {
               loading: false,
-              success: conclusion === "success",
-              publishedUrl,
-              runUrl,
+              success: res.data.conclusion === "success",
+              publishedUrl: res.data.publishedUrl,
+              runUrl: res.data.runUrl,
+              reportUrl: res.data.reportUrl,
+              stdout: res.data.stdout,
+              stderr: res.data.stderr,
             },
           }))
           break
-        } else {
-          // ainda a correr, aguardar
-          setTestResults((prev) => ({
-            ...prev,
-            [id]: {
-              loading: true,
-              success: false,
-              publishedUrl: null,
-              runUrl,
-            },
-          }))
         }
       } catch (err) {
-        console.error(err)
         setTestResults((prev) => ({ ...prev, [id]: { loading: false, error: err.message } }))
         break
       }
@@ -150,7 +170,7 @@ function TestCasesSection({ testCases: initialTestCases }) {
     }
 
     if (tries >= maxTries) {
-      alert("Timeout esperando o resultado do teste.")
+      setTestResults((prev) => ({ ...prev, [id]: { loading: false, error: "Timeout esperando resultado do teste." } }))
     }
   }
 
@@ -197,7 +217,14 @@ function TestCasesSection({ testCases: initialTestCases }) {
               </Button>
             )}
             {(tc.manualSteps || tc.playwrightCode || tc.utilsCode) && (
-              <Button variant="contained" size="small" color="success" sx={{ mb: 2, ml: 2 }} onClick={() => handleRunTest(tc.number)} disabled={saveLoadingId === tc.number}>
+              <Button
+                variant="contained"
+                size="small"
+                color="success"
+                sx={{ mb: 2, ml: 2 }}
+                onClick={() => handleRunTest(tc.number, tc.filename)} // Passa filename do teste salvo
+                disabled={saveLoadingId === tc.number}
+              >
                 Run Test
               </Button>
             )}
@@ -308,7 +335,7 @@ function TestCasesSection({ testCases: initialTestCases }) {
               // </Button>
               <div style={{ marginTop: "20px" }}>
                 <Typography variant="h6">Full Report</Typography>
-                <iframe src={testResults[tc.number].publishedUrl} style={{ width: "100%", height: "600px", border: "1px solid #ccc" }} title="Relatório Playwright" />
+                <iframe src={`${testResults[tc.number].publishedUrl}?ts=${Date.now()}`} style={{ width: "100%", height: "600px", border: "1px solid #ccc" }} title="Relatório Playwright" />
               </div>
             )}
           </AccordionDetails>
