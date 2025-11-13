@@ -26,15 +26,45 @@
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
     "filename": "test_login_successful_positive.spec.js",
     "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login with standard_user', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await login(page, 'standard_user', 'secret_sauce');\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n});",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('successful login with standard_user', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await expect(page).toHaveTitle(/Swag Labs/);\n\n  await login(page, 'standard_user', 'secret_sauce');\n\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n  await expect(page.locator('[data-test=\"inventory-container\"]')).toBeVisible();\n});",
     "manualSteps": [
-      "Navigate to https://www.saucedemo.com/ and wait until the page is fully loaded.",
-      "Verify that the login form is visible and contains two text inputs with placeholders “Username” and “Password”.",
-      "Enter the text standard_user into the Username field.",
-      "Enter the text secret_sauce into the Password field.",
+      "Navigate to https://www.saucedemo.com/ and wait until the login form is fully rendered.",
+      "Verify that the page title is 'Swag Labs' and the URL is correct.",
+      "Locate the username input field using its placeholder attribute 'Username'.",
+      "Enter the text standard_user into the username field and confirm the value is present.",
+      "Locate the password input field using its placeholder attribute 'Password'.",
+      "Enter the text secret_sauce into the password field (value should be masked).",
+      "Locate the Login button and verify it is enabled.",
       "Click the Login button.",
       "Wait for the browser URL to change to https://www.saucedemo.com/inventory.html.",
-      "Verify that the new page displays the heading “Products” (or any element unique to the inventory page) to confirm successful login."
+      "Verify that the new page title is 'Swag Labs' and the heading 'Products' is visible.",
+      "Confirm that the inventory container is displayed, indicating a successful login."
+    ]
+  },
+  {
+    "number": 1,
+    "scenario": "negative",
+    "title": "Test Login Successful",
+    "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
+    "filename": "test_login_successful_negative.spec.js",
+    "utilsCode": "export async function fillText(page, selector, text) {\n  await page.fill(selector, text);\n}\n\nexport async function clickButton(page, selector) {\n  await page.click(selector);\n}\n\nexport async function assertUrlIsNot(page, url) {\n  await page.waitForURL(url => url.href !== url);\n}\n\nexport async function assertVisible(page, selector) {\n  await page.waitForSelector(selector, { state: 'visible' });\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { fillText, clickButton, assertUrlIsNot, assertVisible } from './utils.js';\n\ntest.describe('Login - Negative path', () => {\n  test('standard_user with secret_sauce should NOT reach inventory page', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await expect(page).toHaveTitle(/Swag Labs/);\n\n    await fillText(page, 'input[placeholder=\"Username\"]', 'standard_user');\n    await fillText(page, 'input[placeholder=\"Password\"]', 'secret_sauce');\n    await clickButton(page, 'input[type=\"submit\"][value=\"Login\"]');\n\n    await assertUrlIsNot(page, 'https://www.saucedemo.com/inventory.html');\n    await assertVisible(page, '[data-test=\"error\"]');\n\n    const errorText = await page.textContent('[data-test=\"error\"]');\n    expect(errorText).toContain('Epic sadface');\n\n    const userValue = await page.inputValue('input[placeholder=\"Username\"]');\n    expect(userValue).toBe('standard_user');\n\n    const passValue = await page.inputValue('input[placeholder=\"Password\"]');\n    expect(passValue).toBe('secret_sauce');\n\n    await expect(page.locator('input[type=\"submit\"][value=\"Login\"]')).toBeEnabled();\n  });\n});",
+    "manualSteps": [
+      "Navigate to https://www.saucedemo.com/",
+      "Verify the page title is 'Swag Labs'",
+      "Locate the Username input field with placeholder 'Username'",
+      "Enter the text 'standard_user' into the Username field",
+      "Locate the Password input field with placeholder 'Password'",
+      "Enter the text 'secret_sauce' into the Password field",
+      "Click the 'Login' button",
+      "Verify that the browser URL is NOT https://www.saucedemo.com/inventory.html",
+      "Verify that the current URL is still https://www.saucedemo.com/",
+      "Verify that an error message is displayed on the page",
+      "Verify that the error message contains text related to invalid credentials or locked user",
+      "Verify that the Username field is still populated with 'standard_user'",
+      "Verify that the Password field is still populated with 'secret_sauce'",
+      "Verify that the Login button is still enabled",
+      "Take a screenshot of the error state for evidence"
     ]
   }
 ]
