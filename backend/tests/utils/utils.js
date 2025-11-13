@@ -1,4 +1,4 @@
-// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, login, loginWithCredentials, getErrorMessage
+// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, login
 
 export async function logout(page) {
   await page.click('#react-burger-menu-btn');
@@ -31,12 +31,6 @@ export async function getCartItemPrice(page) {
   return await page.locator('.inventory_item_price').first().textContent();
 }
 
-export async function login(page, username, password) {
-  await page.fill('input[placeholder="Username"]', username);
-  await page.fill('input[placeholder="Password"]', password);
-  await page.click('input[type="submit"][value="Login"], button:has-text("Login")');
-}
-
 export async function loginWithCredentials(page, username, password) {
   await page.fill('input[placeholder="Username"]', username);
   await page.fill('input[placeholder="Password"]', password);
@@ -47,4 +41,10 @@ export async function getErrorMessage(page) {
   const errorLocator = page.locator('[data-test="error"]');
   await errorLocator.waitFor({ state: 'visible' });
   return errorLocator.textContent();
+}
+
+export async function login(page, username, password) {
+  await page.fill('input[placeholder="Username"]', username);
+  await page.fill('input[placeholder="Password"]', password);
+  await page.click('input[type="submit"][value="Login"], button:has-text("Login")');
 }
