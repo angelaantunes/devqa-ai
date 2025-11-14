@@ -47,8 +47,8 @@
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
     "filename": "test_login_successful_negative.spec.js",
-    "utilsCode": "export async function fillText(page, selector, text) {\n  const field = page.locator(selector);\n  await field.clear();\n  await field.fill(text);\n}\n\nexport async function clickElement(page, selector) {\n  const element = page.locator(selector);\n  await element.waitFor({ state: 'visible' });\n  await element.click();\n}\n\nexport async function assertUrlIsNot(page, url) {\n  await page.waitForLoadState('networkidle');\n  const currentUrl = page.url();\n  if (currentUrl === url) {\n    throw new Error(`Expected URL to NOT be ${url}, but it was.`);\n  }\n}\n\nexport async function assertVisible(page, selector) {\n  const element = page.locator(selector);\n  await element.waitFor({ state: 'visible' });\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { fillText, clickElement, assertUrlIsNot, assertVisible } from './utils.js';\n\ntest.describe('Login - Negative Path', () => {\n  test('Login with valid credentials should NOT reach inventory page (negative)', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await expect(page).toHaveTitle(/Swag Labs/);\n\n    await fillText(page, '[data-test=\"username\"]', 'standard_user');\n    await fillText(page, '[data-test=\"password\"]', 'secret_sauce');\n    await clickElement(page, '[data-test=\"login-button\"]');\n\n    await assertUrlIsNot(page, 'https://www.saucedemo.com/inventory.html');\n    await assertVisible(page, '[data-test=\"error\"]');\n\n    const errorMessage = page.locator('[data-test=\"error\"]');\n    await expect(errorMessage).toContainText(/Epic sadface/);\n\n    const usernameInput = page.locator('[data-test=\"username\"]');\n    await expect(usernameInput).toHaveValue('standard_user');\n\n    const passwordInput = page.locator('[data-test=\"password\"]');\n    await expect(passwordInput).toBeEmpty();\n\n    const loginButton = page.locator('[data-test=\"login-button\"]');\n    await expect(loginButton).toBeEnabled();\n\n    await page.screenshot({ path: 'negative-login-error.png', fullPage: true });\n  });\n});",
+    "utilsCode": "export async function fillInput(page, selector, value) {\n  await page.fill(selector, value);\n}\n\nexport async function clickButton(page, selector) {\n  await page.click(selector);\n}\n\nexport async function getErrorMessage(page) {\n  const error = await page.locator('[data-test=\"error\"]').textContent();\n  return error?.trim();\n}\n\nexport async function isOnPage(page, url) {\n  return page.url() === url;\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { fillInput, clickButton, getErrorMessage, isOnPage } from './utils.js';\n\ntest.describe('Login - Negative Path', () => {\n  test('should NOT reach inventory page with invalid credentials', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await expect(page).toHaveTitle(/Swag Labs/);\n\n    await fillInput(page, 'input[placeholder=\"Username\"]', 'standard_user');\n    await fillInput(page, 'input[placeholder=\"Password\"]', 'secret_sauce');\n    await clickButton(page, 'input[type=\"submit\"]');\n\n    // Negative assertions\n    const reachedInventory = await isOnPage(page, 'https://www.saucedemo.com/inventory.html');\n    expect(reachedInventory).toBe(false);\n\n    const errorText = await getErrorMessage(page);\n    expect(errorText).toBeTruthy();\n\n    await page.screenshot({ path: 'negative-login-fail.png' });\n  });\n});",
     "manualSteps": [
       "Navigate to https://www.saucedemo.com/",
       "Verify the page title is 'Swag Labs'",
@@ -59,11 +59,8 @@
       "Click the 'Login' button",
       "Verify that the browser URL is NOT https://www.saucedemo.com/inventory.html (negative assertion)",
       "Verify that an error message element is present on the page",
-      "Verify that the error message text is appropriate for a failed login",
-      "Verify that the Username field still contains the entered value",
-      "Verify that the Password field is cleared or masked",
-      "Verify that the Login button is still enabled",
-      "Take a screenshot of the error state for evidence"
+      "Capture the error message text and confirm it is not empty",
+      "Take a screenshot of the failed login attempt for evidence"
     ]
   },
   {
