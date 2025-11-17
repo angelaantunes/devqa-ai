@@ -44,7 +44,7 @@ export async function getErrorMessage(page) {
 }
 
 export async function login(page, username, password) {
-  await page.fill('input[placeholder="Username"]', username);
-  await page.fill('input[placeholder="Password"]', password);
-  await page.click('input[type="submit"][value="Login"], button:has-text("Login")');
+  await page.fill('[data-test="username"]', username);
+  await page.fill('[data-test="password"]', password);
+  await page.click('[data-test="login-button"]');
 }
