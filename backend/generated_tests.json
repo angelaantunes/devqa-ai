@@ -24,20 +24,20 @@
     "scenario": "positive",
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "filename": "login_with_standard_user_should_succeed.spec.js",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user should succeed', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await expect(page).toHaveTitle(/Swag Labs/);\n\n  await login(page, 'standard_user', 'secret_sauce');\n\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n});",
+    "filename": "test_login_successful.spec.js",
+    "utilsCode": "export async function fillText(page, selector, text) {\n  await page.fill(selector, text);\n}\n\nexport async function clickElement(page, selector) {\n  await page.click(selector);\n}\n\nexport async function assertUrl(page, expectedUrl) {\n  await page.waitForURL(expectedUrl);\n}\n\nexport async function assertText(page, selector, expectedText) {\n  await page.waitForSelector(selector);\n  const text = await page.textContent(selector);\n  if (!text.includes(expectedText)) {\n    throw new Error(`Expected text \"${expectedText}\" not found in \"${text}\"`);\n  }\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { fillText, clickElement, assertUrl, assertText } from '../utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com');\n  await expect(page).toHaveTitle(/Swag Labs/);\n  \n  await fillText(page, 'input[placeholder=\"Username\"]', 'standard_user');\n  await fillText(page, 'input[placeholder=\"Password\"]', 'secret_sauce');\n  await clickElement(page, 'input[type=\"submit\"]');\n  \n  await assertUrl(page, 'https://www.saucedemo.com/inventory.html');\n  await assertText(page, 'span.title', 'Products');\n});",
     "manualSteps": [
-      "Navigate to https://www.saucedemo.com/",
-      "Verify the page title is 'Swag Labs'",
+      "Navigate to https://www.saucedemo.com",
+      "Verify the page title contains 'Swag Labs'",
       "Locate the Username input field with placeholder 'Username'",
       "Enter the text 'standard_user' into the Username field",
       "Locate the Password input field with placeholder 'Password'",
       "Enter the text 'secret_sauce' into the Password field",
-      "Click the 'Login' button",
+      "Click the Login button",
       "Wait for the URL to change to https://www.saucedemo.com/inventory.html",
-      "Verify the current page URL is https://www.saucedemo.com/inventory.html",
-      "Verify the page now displays the text 'Products' in the header"
+      "Verify the current URL is https://www.saucedemo.com/inventory.html",
+      "Verify the page contains the text 'Products' in the header"
     ]
   },
   {
