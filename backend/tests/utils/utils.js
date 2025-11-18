@@ -1,4 +1,4 @@
-// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, clearFields, assertLoginError, login, waitForURL
+// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, clearFields, assertLoginError, waitForURL, login
 
 export async function logout(page) {
   await page.click('#react-burger-menu-btn');
@@ -54,12 +54,12 @@ export async function assertLoginError(page, text) {
   await expect(page).toHaveURL(/.*saucedemo\.com\/$/);
 }
 
-export async function login(page, username, password) {
-  await page.fill('[data-test="username"]', username);
-  await page.fill('[data-test="password"]', password);
-  await page.click('[data-test="login-button"]');
-}
-
 export async function waitForURL(page, url, timeout = 10000) {
   await page.waitForURL(url, { timeout });
+}
+
+export async function login(page, username, password) {
+  await page.fill('input[placeholder="Username"]', username);
+  await page.fill('input[placeholder="Password"]', password);
+  await page.click('input[type="submit"][value="Login"]');
 }
