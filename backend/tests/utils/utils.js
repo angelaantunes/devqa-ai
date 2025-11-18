@@ -1,4 +1,4 @@
-// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, clearFields, assertLoginError, waitForURL, login, checkLoginError
+// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, clearFields, assertLoginError, waitForURL, checkLoginError, login, getErrorMessage, waitForUrl
 
 export async function logout(page) {
   await page.click('#react-burger-menu-btn');
@@ -37,10 +37,6 @@ export async function loginWithCredentials(page, username, password) {
   await page.click('input[type="submit"]');
 }
 
-export async function getErrorMessage(page) {
-  return await page.textContent('[data-test="error"]');
-}
-
 export async function clearFields(page) {
   await page.fill('[data-test="username"]', '');
   await page.fill('[data-test="password"]', '');
@@ -58,14 +54,22 @@ export async function waitForURL(page, url, timeout = 10000) {
   await page.waitForURL(url, { timeout });
 }
 
-export async function login(page, username, password) {
-  await page.fill('[data-test="username"]', username);
-  await page.fill('[data-test="password"]', password);
-  await page.click('[data-test="login-button"]');
-}
-
 export async function checkLoginError(page, expectedText) {
   const error = page.locator('[data-test="error"]');
   await expect(error).toBeVisible();
   await expect(error).toContainText(expectedText);
+}
+
+export async function login(page, username, password) {
+  if (username !== undefined) await page.fill('[data-test="username"]', username);
+  if (password !== undefined) await page.fill('[data-test="password"]', password);
+  await page.click('[data-test="login-button"]');
+}
+
+export async function getErrorMessage(page) {
+  return await page.textContent('[data-test="error"]');
+}
+
+export async function waitForUrl(page, url, timeout = 5000) {
+  await page.waitForURL(url, { timeout });
 }
