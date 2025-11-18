@@ -1,4 +1,9 @@
-// Exported helpers: getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, clearFields, login, logout
+// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, clearFields, login, assertLoginError
+
+export async function logout(page) {
+  await page.click('#react-burger-menu-btn');
+  await page.click('[data-test="logout-sidebar-link"]');
+}
 
 export async function getFirstItemTitle(page) {
   return await page.locator('.inventory_item').first().locator('.inventory_item_name').innerText();
@@ -45,11 +50,12 @@ export async function login(page, username, password) {
   await page.fill('[data-test="username"]', username);
   await page.fill('[data-test="password"]', password);
   await page.click('[data-test="login-button"]');
-  await page.waitForURL('**/inventory.html');
 }
 
-export async function logout(page) {
-  await page.click('#react-burger-menu-btn');
-  await page.click('[data-test="logout-sidebar-link"]');
-  await page.waitForURL('**/');
+export async function assertLoginError(page, text) {
+  const error = page.locator('[data-test="error"]');
+  await expect(error).toBeVisible();
+  await expect(error).toContainText(text);
+  // ensure we stay on login page
+  await expect(page).toHaveURL(/.*saucedemo\.com\/$/);
 }
