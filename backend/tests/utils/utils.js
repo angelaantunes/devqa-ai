@@ -1,4 +1,4 @@
-// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, clearFields, login, assertLoginError
+// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, clearFields, assertLoginError, login, waitForURL
 
 export async function logout(page) {
   await page.click('#react-burger-menu-btn');
@@ -46,16 +46,20 @@ export async function clearFields(page) {
   await page.fill('[data-test="password"]', '');
 }
 
-export async function login(page, username, password) {
-  await page.fill('[data-test="username"]', username);
-  await page.fill('[data-test="password"]', password);
-  await page.click('[data-test="login-button"]');
-}
-
 export async function assertLoginError(page, text) {
   const error = page.locator('[data-test="error"]');
   await expect(error).toBeVisible();
   await expect(error).toContainText(text);
   // ensure we stay on login page
   await expect(page).toHaveURL(/.*saucedemo\.com\/$/);
+}
+
+export async function login(page, username, password) {
+  await page.fill('[data-test="username"]', username);
+  await page.fill('[data-test="password"]', password);
+  await page.click('[data-test="login-button"]');
+}
+
+export async function waitForURL(page, url, timeout = 10000) {
+  await page.waitForURL(url, { timeout });
 }
