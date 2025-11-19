@@ -111,19 +111,23 @@
     "number": 5,
     "title": "Check first item",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/5",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n  await page.waitForURL('https://www.saucedemo.com/inventory.html');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\n\ntest.describe(\"Check first item title and price after successful login\", () => {\n  test('Check first item title and price after successful login', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n  \n    // Ensure we are on the inventory page\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  \n    // Locate the first inventory item\n    const firstItem = page.locator('.inventory_item').first();\n  \n    // Check title\n    const title = await firstItem.locator('.inventory_item_name').textContent();\n    expect(title.trim()).toBe('Sauce Labs Backpack');\n  \n    // Check price\n    const price = await firstItem.locator('.inventory_item_price').textContent();\n    expect(price.trim()).toBe('$29.99');\n  });\n});",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\n\ntest.describe(\"Check first item title and price after successful login\", () => {\n  test('Check first item title and price after successful login', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  \n    const firstItem = page.locator('.inventory_item').first();\n    await expect(firstItem.locator('.inventory_item_name')).toHaveText('Sauce Labs Backpack');\n    await expect(firstItem.locator('.inventory_item_price')).toHaveText('$69.99');\n  });\n});",
     "manualSteps": [
       "1. Open the browser and navigate to https://www.saucedemo.com/",
-      "2. Wait for the login page to load completely (check that the Username and Password fields are visible).",
-      "3. In the input field with placeholder \"Username\", type standard_user exactly as provided.",
-      "4. In the input field with placeholder \"Password\", type secret_sauce exactly as provided.",
-      "5. Click the \"Login\" button.",
-      "6. Verify that the URL changes to https://www.saucedemo.com/inventory.html and the inventory page loads.",
-      "7. Locate the first inventory item card on the page (top-left item).",
-      "8. Within that card, read the item title and confirm it is exactly 'Sauce Labs Backpack'.",
-      "9. Within the same card, read the item price and confirm it is exactly '$29.99'.",
-      "10. If both assertions pass, the test is successful; otherwise, log the mismatch as a failure."
+      "2. Wait for the login page to load completely",
+      "3. Locate the Username input field with placeholder 'Username'",
+      "4. Enter the text 'standard_user' into the Username field",
+      "5. Locate the Password input field with placeholder 'Password'",
+      "6. Enter the text 'secret_sauce' into the Password field",
+      "7. Locate and click the 'Login' button",
+      "8. Wait for the URL to change to https://www.saucedemo.com/inventory.html",
+      "9. Verify that the inventory page has loaded and items are visible",
+      "10. Locate the first item card in the inventory list",
+      "11. Within the first item card, find the item title element",
+      "12. Verify that the item title text is exactly 'Sauce Labs Backpack'",
+      "13. Within the same first item card, find the item price element",
+      "14. Verify that the item price text is exactly '$69.99'"
     ]
   }
 ]
