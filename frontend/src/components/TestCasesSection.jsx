@@ -6,6 +6,7 @@ import Box from "@mui/material/Box"
 import TextareaAutosize from "@mui/material/TextareaAutosize"
 import Autocomplete from "@mui/material/Autocomplete"
 import TextField from "@mui/material/TextField"
+import { FormControlLabel, Checkbox } from "@mui/material"
 
 function TestCasesSection({ testCases: initialTestCases }) {
   const [testCases, setTestCases] = useState(initialTestCases)
@@ -16,24 +17,32 @@ function TestCasesSection({ testCases: initialTestCases }) {
   const [showCustomPrompt, setShowCustomPrompt] = useState({})
   const [relatedNumbers, setRelatedNumbers] = useState({})
   const [testResults, setTestResults] = useState({})
+  const [negativeScenarioChecked, setNegativeScenarioChecked] = useState({})
 
   const [saveLoadingId, setSaveLoadingId] = useState(null)
 
   const API_URL = import.meta.env.VITE_API_URL
 
   const handleGenerateTest = async (number, idx) => {
-    setLoadingNumber(number)
-    try {
-      const res = await axios.post(`${API_URL}/api/generate-test/${number}`)
-      const updatedTestCases = [...testCases]
-      updatedTestCases[idx] = { ...updatedTestCases[idx], ...res.data }
-      setTestCases(updatedTestCases)
-      alert("✅ Test generated for this ticket!")
-    } catch (err) {
-      alert("Error generating test for this ticket")
-    }
-    setLoadingNumber(null)
+  setLoadingNumber(number)
+  try {
+    const negativeScenario = negativeScenarioChecked[number] || false
+
+    const res = await axios.post(`${API_URL}/api/generate-test/${number}`, {
+      negativeScenario,
+    })
+
+    const updatedTestCases = [...testCases]
+    updatedTestCases[idx] = { ...updatedTestCases[idx], ...res.data }
+    setTestCases(updatedTestCases)
+    alert(
+      `✅ Test generated for this ticket${negativeScenario ? " (Negative Scenario)" : ""}!`
+    )
+  } catch (err) {
+    alert("Error generating test for this ticket")
   }
+  setLoadingNumber(null)
+}
 
   const handleCustomPromptChange = (number, value) => {
     setCustomPrompts((prev) => ({ ...prev, [number]: value }))
@@ -98,19 +107,8 @@ function TestCasesSection({ testCases: initialTestCases }) {
     setSaveLoadingId(null)
   }
 
-  /*const handleRunTest = async (id) => {
-    try {
-      const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`)
-      alert(`✅ Test for ticket ${id} executed!\n\n${res.data.stdout}`)
-    } catch (err) {
-      console.error(err)
-      alert(`❌ Error running test for ticket ${id}`)
-    }
-  }*/
-
   const handleRunTest = async (id, filename) => {
-
-    console.log("RunTest called", { id, filename });
+    console.log("RunTest called", { id, filename })
     setTestResults((prev) => ({ ...prev, [id]: { loading: true } }))
 
     if (!filename) {
@@ -123,7 +121,8 @@ function TestCasesSection({ testCases: initialTestCases }) {
 
     // Dispara o teste remotamente
     try {
-      const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`)
+      // Send filename in the body so backend can run the exact test file (handles multiple scenarios per issue)
+      const res = await axios.post(`${API_URL}/api/run-playwright-test/${id}`, { filename })
       // Resposta esperada: { status: "pending", testName: filename }
       if (res.data.status === "pending" && res.data.testName) {
         pollTestStatus(id, res.data.testName)
@@ -202,6 +201,21 @@ function TestCasesSection({ testCases: initialTestCases }) {
             </Link>
           </AccordionSummary>
           <AccordionDetails>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={negativeScenarioChecked[tc.number] || false}
+                  onChange={(e) =>
+                    setNegativeScenarioChecked((prev) => ({
+                      ...prev,
+                      [tc.number]: e.target.checked,
+                    }))
+                  }
+                />
+              }
+              label="Generate Negative Scenario"
+            />
+
             <Button variant="outlined" size="small" sx={{ mb: 2 }} onClick={() => handleGenerateTest(tc.number, i)} disabled={loadingNumber === tc.number}>
               {loadingNumber === tc.number ? "Generating..." : "Generate Test"}
             </Button>
