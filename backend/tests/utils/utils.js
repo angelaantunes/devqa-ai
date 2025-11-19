@@ -1,4 +1,9 @@
-// Exported helpers: getFirstItemTitle, getFirstItemPrice, goToCart, loginWithCredentials, getErrorMessage, logout, login, getLoginErrorMessage, clearLoginFields, addFirstItemToCart, openCart, waitForCartLoaded, getCartBadgeCount, getCartItemPrice, interceptCart500, goOffline, goOnline, deleteCartStorage
+// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, login, addFirstItemToCart, openCart, getCartBadge, getItemPrice, removeCartFromLocalStorage
+
+export async function logout(page) {
+  await page.click('#react-burger-menu-btn');
+  await page.click('[data-test="logout-sidebar-link"]');
+}
 
 export async function getFirstItemTitle(page) {
   return await page.locator('.inventory_item').first().locator('.inventory_item_name').innerText();
@@ -13,6 +18,11 @@ export async function goToCart(page) {
   await page.waitForURL('**/cart.html');
 }
 
+export async function getCartItemPrice(page) {
+  // Assumes single item in cart; adjust selector if needed
+  return await page.locator('.inventory_item_price').first().textContent();
+}
+
 export async function loginWithCredentials(page, username, password) {
   await page.fill('input[placeholder="Username"]', username);
   await page.fill('input[placeholder="Password"]', password);
@@ -25,67 +35,33 @@ export async function getErrorMessage(page) {
   return errorLocator.textContent();
 }
 
-export async function logout(page) {
-  await page.click('#react-burger-menu-btn');
-  await page.click('[data-test="logout-sidebar-link"]');
-  await expect(page).toHaveURL('https://www.saucedemo.com/');
-}
-
 export async function login(page, username, password) {
   await page.fill('[data-test="username"]', username);
   await page.fill('[data-test="password"]', password);
   await page.click('[data-test="login-button"]');
 }
 
-export async function getLoginErrorMessage(page) {
-  return await page.textContent('[data-test="error"]');
-}
-
-export async function clearLoginFields(page) {
-  await page.fill('[data-test="username"]', '');
-  await page.fill('[data-test="password"]', '');
-}
-
 export async function addFirstItemToCart(page) {
-  const btn = page.locator('.inventory_item').first().locator('button:has-text("Add to cart")');
+  const btn = page.locator('[data-test^="add-to-cart"]').first();
+  await btn.waitFor({ state: 'visible' });
   await btn.click();
-  await expect(page.locator('.shopping_cart_badge')).toHaveText('1');
 }
 
 export async function openCart(page) {
-  await page.click('.shopping_cart_container');
-  await expect(page).toHaveURL(/.*cart/i);
+  await page.click('[data-test="shopping-cart-container"]');
+  await page.waitForURL('**/cart.html');
 }
 
-export async function waitForCartLoaded(page) {
-  await expect(page.locator('.cart_item')).toBeVisible();
-}
-
-export async function getCartBadgeCount(page) {
+export async function getCartBadge(page) {
   const badge = page.locator('.shopping_cart_badge');
   if (!(await badge.isVisible())) return 0;
   return parseInt(await badge.textContent(), 10);
 }
 
-export async function getCartItemPrice(page) {
-  return page.locator('.cart_item .inventory_item_price').first().textContent();
+export async function getItemPrice(page) {
+  return page.locator('.inventory_item_price').first().textContent();
 }
 
-export async function interceptCart500(page) {
-  await page.route('**/cart', route => route.abort('failed'));
-}
-
-export async function goOffline(page) {
-  await page.context().setOffline(true);
-}
-
-export async function goOnline(page) {
-  await page.context().setOffline(false);
-}
-
-export async function deleteCartStorage(page) {
-  await page.evaluate(() => {
-    localStorage.removeItem('cart-contents');
-    sessionStorage.removeItem('cart-contents');
-  });
+export async function removeCartFromLocalStorage(page) {
+  await page.evaluate(() => localStorage.removeItem('cart-contents'));
 }
