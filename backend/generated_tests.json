@@ -112,23 +112,19 @@
     "number": 5,
     "title": "Check first item",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/5",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function getInventoryItem(page, index = 0) {\n  return page.locator('.inventory_item').nth(index);\n}\n\nexport async function getItemName(inventoryItem) {\n  return inventoryItem.locator('.inventory_item_name').textContent();\n}\n\nexport async function getItemPrice(inventoryItem) {\n  return inventoryItem.locator('.inventory_item_price').textContent();\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Inventory Item Validation', () => {\n  test('First item should have correct title and price', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n\n    // Wait for inventory page\n    await expect(page).toHaveURL(/.*\\/inventory.html/);\n\n    // Get first item card\n    const firstItem = page.locator('.inventory_item').first();\n    await expect(firstItem).toBeVisible();\n\n    // Validate title\n    const itemName = firstItem.locator('.inventory_item_name');\n    await expect(itemName).toHaveText('Sauce Labs Backpack');\n\n    // Validate price\n    const itemPrice = firstItem.locator('.inventory_item_price');\n    await expect(itemPrice).toHaveText('$29.99');\n  });\n});",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n  await page.waitForURL(/.*\\/inventory\\.html?/);\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\n\ntest.describe(\"Check first item title and price after successful login\", () => {\n  test('Check first item title and price after successful login', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n  \n    // Ensure we are on the inventory page\n    await expect(page).toHaveURL(/.*\\/inventory\\.html?/);\n  \n    // Get the first inventory item\n    const firstItem = page.locator('.inventory_item').first();\n    await expect(firstItem).toBeVisible();\n  \n    // Check title\n    const title = firstItem.locator('.inventory_item_name');\n    await expect(title).toHaveText('Sauce Labs Backpack');\n  \n    // Check price\n    const price = firstItem.locator('.inventory_item_price');\n    await expect(price).toHaveText('$29.99');\n  });\n});",
     "manualSteps": [
-      "1. Open a clean browser instance and navigate to https://www.saucedemo.com/",
-      "2. Verify the login page is displayed (username & password fields are visible)",
-      "3. Enter the standard username 'standard_user' into the username field",
-      "4. Enter the password 'secret_sauce' into the password field",
-      "5. Click the LOGIN button",
-      "6. Verify the URL changes to https://www.saucedemo.com/inventory.html",
-      "7. Verify the inventory list container is visible",
-      "8. Locate the first inventory item card (top-left item)",
-      "9. Within the first card, find the item name element",
-      "10. Verify the text content equals 'Sauce Labs Backpack'",
-      "11. Within the same card, find the item price element",
-      "12. Verify the text content equals '$29.99'",
-      "13. (Optional) Take a screenshot of the first item for evidence",
-      "14. Log a PASS/FAIL result for both assertions"
+      "1. Open the browser and navigate to https://www.saucedemo.com/",
+      "2. Wait for the login page to load completely (check that the Username and Password fields are visible).",
+      "3. Enter the text standard_user into the input field with the placeholder \"Username\".",
+      "4. Enter the text secret_sauce into the input field with the placeholder \"Password\".",
+      "5. Click the \"Login\" button.",
+      "6. Verify that the URL changes to https://www.saucedemo.com/inventory.html (or inventory.htm) and the inventory list appears.",
+      "7. Locate the first inventory item card in the list (top-left item).",
+      "8. Inside the first item card, find the item title element and confirm its exact text is 'Sauce Labs Backpack'.",
+      "9. Inside the same first item card, find the item price element and confirm its exact text is '$29.99'.",
+      "10. Report pass if both assertions are true; otherwise, report fail."
     ]
   }
 ]
