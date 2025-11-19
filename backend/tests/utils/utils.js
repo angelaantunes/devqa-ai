@@ -1,4 +1,4 @@
-// Exported helpers: getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, login, logout
+// Exported helpers: getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, logout, login, getLoginErrorMessage, clearLoginFields
 
 export async function getFirstItemTitle(page) {
   return await page.locator('.inventory_item').first().locator('.inventory_item_name').innerText();
@@ -38,14 +38,23 @@ export async function getErrorMessage(page) {
   return errorLocator.textContent();
 }
 
+export async function logout(page) {
+  await page.click('#react-burger-menu-btn');
+  await page.click('[data-test="logout-sidebar-link"]');
+  await expect(page).toHaveURL('https://www.saucedemo.com/');
+}
+
 export async function login(page, username, password) {
   await page.fill('[data-test="username"]', username);
   await page.fill('[data-test="password"]', password);
   await page.click('[data-test="login-button"]');
 }
 
-export async function logout(page) {
-  await page.click('#react-burger-menu-btn');
-  await page.click('[data-test="logout-sidebar-link"]');
-  await expect(page).toHaveURL('https://www.saucedemo.com/');
+export async function getLoginErrorMessage(page) {
+  return await page.textContent('[data-test="error"]');
+}
+
+export async function clearLoginFields(page) {
+  await page.fill('[data-test="username"]', '');
+  await page.fill('[data-test="password"]', '');
 }
