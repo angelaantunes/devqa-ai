@@ -1,4 +1,4 @@
-// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, login
+// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, addFirstItemToCart, goToCart, getCartItemPrice, loginWithCredentials, getErrorMessage, login, assertErrorMessage
 
 export async function logout(page) {
   await page.click('#react-burger-menu-btn');
@@ -47,4 +47,10 @@ export async function login(page, username, password) {
   await page.fill('[data-test="username"]', username);
   await page.fill('[data-test="password"]', password);
   await page.click('[data-test="login-button"]');
+}
+
+export async function assertErrorMessage(page, expectedText) {
+  const errorLocator = page.locator('[data-test="error"]');
+  await expect(errorLocator).toBeVisible();
+  await expect(errorLocator).toContainText(expectedText);
 }
