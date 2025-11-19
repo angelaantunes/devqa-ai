@@ -91,18 +91,22 @@
     "title": "Check first item",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/5",
     "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\n\ntest.describe(\"Check first item title and price after successful login\", () => {\n  test('Check first item title and price after successful login', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n  \n    // Ensure we are on the inventory page\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  \n    // Locate the first inventory item\n    const firstItem = page.locator('.inventory_item').first();\n  \n    // Check the title\n    const itemTitle = firstItem.locator('.inventory_item_name');\n    await expect(itemTitle).toHaveText('Sauce Labs Backpack');\n  \n    // Check the price\n    const itemPrice = firstItem.locator('.inventory_item_price');\n    await expect(itemPrice).toHaveText('$29.99');\n  });\n});",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\n\ntest.describe(\"Check first item title and price after successful login\", () => {\n  test('Check first item title and price after successful login', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  \n    const firstItem = page.locator('.inventory_item').first();\n    await expect(firstItem).toBeVisible();\n  \n    const itemTitle = firstItem.locator('.inventory_item_name');\n    await expect(itemTitle).toHaveText('Sauce Labs Backpack');\n  \n    const itemPrice = firstItem.locator('.inventory_item_price');\n    await expect(itemPrice).toHaveText('$69.99');\n  });\n});",
     "manualSteps": [
       "1. Open the browser and navigate to https://www.saucedemo.com/",
-      "2. Verify the login page is displayed.",
-      "3. Enter the text 'standard_user' into the input field with placeholder 'Username'.",
-      "4. Enter the text 'secret_sauce' into the input field with placeholder 'Password'.",
-      "5. Click the 'Login' button.",
-      "6. Verify the URL is now https://www.saucedemo.com/inventory.html.",
-      "7. Verify the inventory list is visible.",
-      "8. Locate the first item card in the inventory list.",
-      "9. Verify the item title is exactly 'Sauce Labs Backpack'.",
-      "10. Verify the item price is exactly '$29.99'."
+      "2. Wait for the login page to load completely",
+      "3. Locate the Username input field with placeholder 'Username'",
+      "4. Enter the text 'standard_user' into the Username field",
+      "5. Locate the Password input field with placeholder 'Password'",
+      "6. Enter the text 'secret_sauce' into the Password field",
+      "7. Locate and click the 'Login' button",
+      "8. Wait for the URL to change to https://www.saucedemo.com/inventory.html",
+      "9. Verify that the inventory page has loaded by checking for visibility of the inventory list",
+      "10. Locate the first item in the inventory list",
+      "11. Within the first item card, locate the item title element",
+      "12. Verify that the item title text is exactly 'Sauce Labs Backpack'",
+      "13. Within the first item card, locate the item price element",
+      "14. Verify that the item price text is exactly '$69.99'"
     ]
   }
 ]
