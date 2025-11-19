@@ -1,5 +1,8 @@
 import { Paper, Typography, Accordion, AccordionSummary, AccordionDetails, Link, Divider, Button } from "@mui/material"
 import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
+import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism"
 import axios from "axios"
 import { useState } from "react"
 import { ExpandMore } from "@mui/icons-material"
@@ -25,25 +28,23 @@ function TestCasesSection({ testCases: initialTestCases }) {
   const API_URL = import.meta.env.VITE_API_URL
 
   const handleGenerateTest = async (number, idx) => {
-  setLoadingNumber(number)
-  try {
-    const negativeScenario = negativeScenarioChecked[number] || false
+    setLoadingNumber(number)
+    try {
+      const negativeScenario = negativeScenarioChecked[number] || false
 
-    const res = await axios.post(`${API_URL}/api/generate-test/${number}`, {
-      negativeScenario,
-    })
+      const res = await axios.post(`${API_URL}/api/generate-test/${number}`, {
+        negativeScenario,
+      })
 
-    const updatedTestCases = [...testCases]
-    updatedTestCases[idx] = { ...updatedTestCases[idx], ...res.data }
-    setTestCases(updatedTestCases)
-    alert(
-      `✅ Test generated for this ticket${negativeScenario ? " (Negative Scenario)" : ""}!`
-    )
-  } catch (err) {
-    alert("Error generating test for this ticket")
+      const updatedTestCases = [...testCases]
+      updatedTestCases[idx] = { ...updatedTestCases[idx], ...res.data }
+      setTestCases(updatedTestCases)
+      alert(`✅ Test generated for this ticket${negativeScenario ? " (Negative Scenario)" : ""}!`)
+    } catch (err) {
+      alert("Error generating test for this ticket")
+    }
+    setLoadingNumber(null)
   }
-  setLoadingNumber(null)
-}
 
   const handleCustomPromptChange = (number, value) => {
     setCustomPrompts((prev) => ({ ...prev, [number]: value }))
@@ -202,21 +203,22 @@ function TestCasesSection({ testCases: initialTestCases }) {
             </Link>
           </AccordionSummary>
           <AccordionDetails>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={negativeScenarioChecked[tc.number] || false}
-                  onChange={(e) =>
-                    setNegativeScenarioChecked((prev) => ({
-                      ...prev,
-                      [tc.number]: e.target.checked,
-                    }))
-                  }
-                />
-              }
-              label="Generate Negative Scenario"
-            />
-
+            <Box>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={negativeScenarioChecked[tc.number] || false}
+                    onChange={(e) =>
+                      setNegativeScenarioChecked((prev) => ({
+                        ...prev,
+                        [tc.number]: e.target.checked,
+                      }))
+                    }
+                  />
+                }
+                label="Generate Negative Scenario"
+              />
+            </Box>
             <Button variant="outlined" size="small" sx={{ mb: 2 }} onClick={() => handleGenerateTest(tc.number, i)} disabled={loadingNumber === tc.number}>
               {loadingNumber === tc.number ? "Generating..." : "Generate Test"}
             </Button>
@@ -282,7 +284,31 @@ function TestCasesSection({ testCases: initialTestCases }) {
               <>
                 <Typography variant="subtitle1">📝 Content</Typography>
                 <Box sx={{ mb: 2, background: "#f8f8fa", p: 2, borderRadius: 1 }}>
-                  <ReactMarkdown>{tc.body}</ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({ node, inline, className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || "")
+                        return !inline && match ? (
+                          <SyntaxHighlighter
+                            style={oneLight}
+                            language={match[1]}
+                            PreTag="div"
+                            customStyle={{ borderRadius: 6, fontSize: 14 }}
+                            {...props}
+                          >
+                            {String(children).replace(/\n$/, "")}
+                          </SyntaxHighlighter>
+                        ) : (
+                          <code style={{ background: "#eee", borderRadius: 4, padding: "2px 4px" }} {...props}>
+                            {children}
+                          </code>
+                        )
+                      }
+                    }}
+                  >
+                    {preprocessMarkdown(tc.body)}
+                  </ReactMarkdown>
                 </Box>
                 <Divider sx={{ my: 1 }} />
               </>
@@ -293,13 +319,17 @@ function TestCasesSection({ testCases: initialTestCases }) {
                 <Box sx={{ mb: 1, background: "#f8f8fa", p: 2, borderRadius: 1 }}>
                   {Array.isArray(tc.manualSteps)
                     ? tc.manualSteps.map((step, j) => (
-                        <div key={j} style={{ marginBottom: 4 }}>{step}</div>
+                        <div key={j} style={{ marginBottom: 4 }}>
+                          {step}
+                        </div>
                       ))
                     : tc.manualSteps
                         .split(/\n\d+\.\s|\n|^\d+\.\s/)
                         .filter((s) => s.trim())
                         .map((step, j) => (
-                          <div key={j} style={{ marginBottom: 4 }}>{step.trim()}</div>
+                          <div key={j} style={{ marginBottom: 4 }}>
+                            {step.trim()}
+                          </div>
                         ))}
                 </Box>
                 <Divider sx={{ my: 1 }} />
@@ -366,4 +396,42 @@ function TestCasesSection({ testCases: initialTestCases }) {
   )
 }
 
+
 export default TestCasesSection
+
+// Preprocess markdown to ensure code blocks are recognized (add newlines before/after triple backticks if missing)
+function preprocessMarkdown(md) {
+  if (!md) return ""
+
+  // 1️⃣ Normalizar fences existentes
+  let processed = md
+    .replace(/([^\n])(```)/g, "$1\n$2")
+    .replace(/(```[^\n]*)([^\n])/g, "$1\n$2")
+
+  // 2️⃣ Detectar blocos JSON sem backticks
+  processed = processed.replace(
+    /(^|\n)(\s*\{[\s\S]*?\})(?=\n|$)/g, 
+    (match, start, json) => {
+      const trimmed = json.trim()
+
+      if (looksLikeJson(trimmed)) {
+        return `${start}\`\`\`json\n${trimmed}\n\`\`\`\n`
+      }
+
+      return match
+    }
+  )
+
+  return processed
+}
+
+function looksLikeJson(str) {
+  try {
+    JSON.parse(str)
+    return true
+  } catch {
+    return false
+  }
+}
+
+
