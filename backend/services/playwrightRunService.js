@@ -1,174 +1,216 @@
-import { exec } from "child_process"
-import path from "path"
-import fs from "fs"
-import { setCompleted } from "../utils/executionStatus.js"
+import { exec } from "child_process";
+import path from "path";
+import fs from "fs";
+import { setCompleted } from "../utils/executionStatus.js";
 
-const GITHUB_API = process.env.GITHUB_API || "https://api.github.com"
+const GITHUB_API = process.env.GITHUB_API || "https://api.github.com";
 
-export function runPlaywrightTests() {
+// ---------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------
+function execCommand(cmd, opts = {}) {
   return new Promise((resolve, reject) => {
-    // Assumindo que o cwd é backend
-    const testDir = "tests/generated"
-    const reportDir = "playwright-report" // Diretório padrão de relatório HTML
-
-    // Comando correto: apenas aponta a pasta com testes RELATIVAMENTE ao cwd
-    // E define o reporter HTML (relatório # gerará na pasta playwright-report automaticamente)
-    const command = `npx playwright test ${testDir} --reporter=html`
-
-    exec(command, { cwd: process.cwd() }, (error, stdout, stderr) => {
-      if (error) {
-        reject({ success: false, error: error.message, stdout, stderr })
-        return
+    exec(
+      cmd,
+      { shell: true, maxBuffer: 10 * 1024 * 1024, ...opts },
+      (err, stdout, stderr) => {
+        if (err) {
+          reject({
+            error: err.message,
+            stdout: stdout?.toString(),
+            stderr: stderr?.toString(),
+          });
+        } else {
+          resolve({
+            stdout: stdout?.toString() || "",
+            stderr: stderr?.toString() || "",
+          });
+        }
       }
-      resolve({ success: true, stdout, stderr, reportPath: path.join(process.cwd(), reportDir) })
-    })
-  })
+    );
+  });
 }
 
-/*export function runSinglePlaywrightTest(testNumber) {
-  return new Promise((resolve, reject) => {
+async function getArtifacts(runId, repo, token) {
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" };
+  const resp = await fetch(
+    `${GITHUB_API}/repos/${repo}/actions/runs/${runId}/artifacts`,
+    { headers }
+  );
+  if (!resp.ok) throw new Error(`Error fetching artifacts: ${await resp.text()}`);
+  const data = await resp.json();
+  return data.artifacts;
+}
+
+function findReportUrl(artifacts, repo) {
+  const artifact = artifacts.find(
+    (a) =>
+      a.name?.includes("playwright-report") ||
+      a.name?.includes("github-pages")
+  );
+  if (!artifact) return null;
+  return `https://github.com/${repo}/actions/artifacts/${artifact.id}`;
+}
+
+export async function waitForReportUpdate(url, maxSecs = 60, interval = 5000) {
+  let waited = 0;
+  let lastMod = null;
+  while (waited < maxSecs) {
     try {
-      const jsonPath = path.join(process.cwd(), "generated_tests.json");
-      if (!fs.existsSync(jsonPath)) {
-        return reject({ error: "Ficheiro generated_tests.json não encontrado" });
+      const resp = await fetch(url, { method: "HEAD" });
+      if (resp.ok) {
+        const mod = resp.headers.get("last-modified");
+        if (mod && mod !== lastMod) return true;
+        lastMod = mod;
       }
+    } catch (_) {}
+    await new Promise((r) => setTimeout(r, interval));
+    waited += interval / 1000;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------
+// Run ALL tests
+// ---------------------------------------------------------
+export async function runPlaywrightTests() {
+  try {
+    const reportDir = path.join(process.cwd(), "playwright-report");
+    const command = `npx playwright test --reporter=html --output=${reportDir}`;
+
+    const { stdout, stderr } = await execCommand(command, {
+      cwd: process.cwd(),
+    });
+
+    const indexPath = path.join(reportDir, "index.html");
+    const exists = fs.existsSync(indexPath);
+
+    return {
+      success: true,
+      stdout,
+      stderr,
+      reportExists: exists,
+      reportPath: exists ? `/reports/index.html` : null,
+    };
+  } catch (err) {
+    return Promise.reject(err);
+  }
+}
+
+// ---------------------------------------------------------
+// Run a single local test
+// ---------------------------------------------------------
+export async function runSinglePlaywrightTest(testIdentifier) {
+  try {
+    let absoluteTestPath = null;
+    let fileBase = null;
+
+    // Case 1: Filename / path was passed
+    if (
+      typeof testIdentifier === "string" &&
+      (testIdentifier.includes(".spec.js") ||
+        testIdentifier.includes("/") ||
+        testIdentifier.includes("\\"))
+    ) {
+      const norm = testIdentifier.replace(/\\/g, "/");
+      const name = path.basename(norm).replace(/\.spec\.js$/i, "");
+      fileBase = name;
+
+      absoluteTestPath = path.isAbsolute(norm)
+        ? norm
+        : path.join(process.cwd(), "tests", "generated", `${name}.spec.js`);
+
+      if (!fs.existsSync(absoluteTestPath)) {
+        if (fs.existsSync(norm)) absoluteTestPath = norm;
+        else throw new Error(`Test file not found: ${absoluteTestPath}`);
+      }
+    }
+
+    // Case 2: Issue number
+    else if (/^\d+$/.test(testIdentifier)) {
+      const jsonPath = path.join(process.cwd(), "generated_tests.json");
+      if (!fs.existsSync(jsonPath))
+        throw new Error("generated_tests.json not found");
 
       const data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+      const tc = data.find(
+        (i) => i.url?.match(/\/issues\/(\d+)$/)?.[1] === String(testIdentifier)
+      );
+      if (!tc) throw new Error("Test case not found in JSON");
 
-      // Procura o teste certo pelo número do issue
-      const tc = data.find(item => {
-        const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1];
-        return issueNumber === String(testNumber);
-      });
+      fileBase =
+        tc.filename ||
+        tc.title
+          ?.toLowerCase()
+          .replace(/\s+/g, "_")
+          .replace(/[^a-z0-9_]/g, "");
 
-      if (!tc) {
-        return reject({ error: `Nenhum caso encontrado no generated_tests.json para o número ${testNumber}` });
-      }
+      absoluteTestPath = path.join(
+        process.cwd(),
+        "tests",
+        "generated",
+        `${fileBase}.spec.js`
+      );
 
-      const filename = tc.title
-        .toLowerCase()
-        .replace(/\s+/g, "_")
-        .replace(/[^a-z0-9_]/g, "");
-
-      // Caminho absoluto do ficheiro de teste, com forward slashes
-      const testPath = path.resolve('tests', 'generated', `${filename}.spec.js`).replace(/\\/g, '/');
-
-      if (!fs.existsSync(testPath)) {
-        return reject({ error: `Ficheiro de teste não encontrado: ${testPath}` });
-      }
-
-      console.log(`🎯 Running single test for ID: ${testNumber}`);
-      console.log(`🧪 Test file: ${testPath}`);
-
-      // Rodar o teste usando npx playwright
-      exec(`npx playwright test "${testPath}" --reporter=line`, { cwd: process.cwd(), shell: true }, (error, stdout, stderr) => {
-        if (error) {
-          return reject({ error: error.message, stdout, stderr });
-        }
-        resolve({ success: true, stdout, stderr });
-      });
-
-    } catch (err) {
-      reject({ error: err.message });
+      if (!fs.existsSync(absoluteTestPath))
+        throw new Error(`Test file not found: ${absoluteTestPath}`);
     }
-  });
-}*/
 
-export function runSinglePlaywrightTest(testNumber) {
-  return new Promise((resolve, reject) => {
-    try {
-      const jsonPath = path.join(process.cwd(), "generated_tests.json")
-      if (!fs.existsSync(jsonPath)) {
-        return reject({ error: "Ficheiro generated_tests.json não encontrado" })
-      }
-
-      const data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"))
-      const tc = data.find((item) => {
-        const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1]
-        return issueNumber === String(testNumber)
-      })
-
-      if (!tc) {
-        return reject({ error: `Nenhum caso encontrado no generated_tests.json para o número ${testNumber}` })
-      }
-
-      const filename = tc.title
-        .toLowerCase()
-        .replace(/\s+/g, "_")
-        .replace(/[^a-z0-9_]/g, "")
-
-      const absoluteTestPath = path.join(process.cwd(), "tests", "generated", `${filename}.spec.js`)
-      if (!fs.existsSync(absoluteTestPath)) {
-        return reject({ error: `Ficheiro de teste não encontrado: ${absoluteTestPath}` })
-      }
-
-      // Use relative path so Playwright treats it as a path (not regex)
-      const relativeTestPath = path.relative(process.cwd(), absoluteTestPath).replace(/\\/g, "/")
-
-      console.log(`🧪 Running Playwright test (relative path): ${relativeTestPath}`)
-
-      // Use two reporters: line for console output and html to generate report
-      // We avoid --project to prevent "Project not found" errors.
-      // We pass both reporters separately (Playwright accepts multiple reporter flags).
-      //const command = `npx playwright test ${relativeTestPath} --reporter=line --reporter=html`;
-      const reportDir = path.join(process.cwd(), "playwright-report")
-      const command = `npx playwright test ${relativeTestPath} --reporter=html --output=${reportDir}`
-      console.log("🚀 Executing:", command)
-
-      exec(command, { cwd: process.cwd(), shell: true, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
-        // Normalize outputs to strings
-        const out = (stdout || "").toString()
-        const err = (stderr || "").toString()
-
-        if (error) {
-          // Return Playwright's stdout/stderr to the caller for debugging
-          return reject({ error: error.message, stdout: out, stderr: err })
-        }
-
-        // Playwright HTML report is generated at playwright-report/index.html by default
-        const reportIndexPath = path.join(reportDir, "index.html")
-
-        if (fs.existsSync(reportIndexPath)) {
-          // Cria uma cópia com o nome do teste
-          const renamedReport = path.join(reportDir, `${filename}.html`)
-          fs.copyFileSync(reportIndexPath, renamedReport)
-        }
-
-        // ✅ devolve uma rota pública (/reports/...)
-        resolve({
-          success: true,
-          stdout: out,
-          stderr: err,
-          reportPath: `/reports/${filename}.html`,
-        })
-        /*const reportIndexPath = path.join(process.cwd(), "playwright-report", "index.html");
-        const reportExists = fs.existsSync(reportIndexPath);
-
-        resolve({
-          success: true,
-          stdout: out,
-          stderr: err,
-          // Return absolute path for backend; controller can convert to a public URL if needed
-          reportPath: reportExists ? reportIndexPath : null,
-          reportExists,
-        });*/
-      })
-    } catch (err) {
-      reject({ error: err.message })
+    // Case 3: treated as filename base
+    else {
+      fileBase = testIdentifier.replace(/\.spec\.js$/i, "");
+      absoluteTestPath = path.join(
+        process.cwd(),
+        "tests",
+        "generated",
+        `${fileBase}.spec.js`
+      );
+      if (!fs.existsSync(absoluteTestPath))
+        throw new Error(`Test file not found: ${absoluteTestPath}`);
     }
-  })
+
+    // Run test
+    const relativePath = path
+      .relative(process.cwd(), absoluteTestPath)
+      .replace(/\\/g, "/");
+
+    const reportDir = path.join(process.cwd(), "playwright-report");
+    const command = `npx playwright test ${relativePath} --reporter=html --output=${reportDir}`;
+
+    const { stdout, stderr } = await execCommand(command, {
+      cwd: process.cwd(),
+    });
+
+    // Copy report as unique file
+    const index = path.join(reportDir, "index.html");
+    if (fs.existsSync(index)) {
+      fs.copyFileSync(index, path.join(reportDir, `${fileBase}.html`));
+    }
+
+    return {
+      success: true,
+      stdout,
+      stderr,
+      reportPath: `/reports/${fileBase}.html`,
+    };
+  } catch (err) {
+    return Promise.reject(err);
+  }
 }
 
+// ---------------------------------------------------------
+// Run test remotely via GitHub Actions
+// ---------------------------------------------------------
 export async function runRemotePlaywrightTest(testName) {
-  const repo = process.env.GITHUB_REPO // "angelaantunes/devqa-ai"
-  const token = process.env.GITHUB_TOKEN
-  const GITHUB_API = process.env.GITHUB_API || "https://api.github.com"
+  const repo = process.env.GITHUB_REPO;
+  const token = process.env.GITHUB_TOKEN;
 
-  // 1. Marca o timestamp imediatamente antes do dispatch
+  if (!repo || !token)
+    throw new Error("GITHUB_REPO or GITHUB_TOKEN missing.");
+
   const dispatchStart = new Date();
 
-  // 2. Disparar workflow
-  let dispatchResp = await fetch(
+  const resp = await fetch(
     `${GITHUB_API}/repos/${repo}/actions/workflows/playwright.yml/dispatches`,
     {
       method: "POST",
@@ -179,67 +221,62 @@ export async function runRemotePlaywrightTest(testName) {
       body: JSON.stringify({ ref: "main", inputs: { filename: testName } }),
     }
   );
-  if (!dispatchResp.ok) {
-    throw new Error(`Erro ao disparar workflow: ${await dispatchResp.text()}`);
-  }
 
-  // 3. Polling para encontrar o run certo (timestamp + branch + evento)
-  let runId;
-  let polls = 0;
-  const maxPolls = 60;
-  while (!runId && polls < maxPolls) {
-    polls++;
+  if (!resp.ok)
+    throw new Error(`Workflow dispatch failed: ${await resp.text()}`);
+
+  // Poll for workflow run
+  let runId = null;
+  for (let i = 0; i < 60 && !runId; i++) {
     const runResp = await fetch(
-      `${GITHUB_API}/repos/${repo}/actions/runs?event=workflow_dispatch&branch=main&per_page=10`,
+      `${GITHUB_API}/repos/${repo}/actions/runs?event=workflow_dispatch&branch=main`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     const data = await runResp.json();
-    // Filtra pelo run mais recente criado após o dispatch e com nome correto
-    const candidate = data.workflow_runs.find((run) => {
-      const runCreated = new Date(run.created_at);
+
+    const candidate = data.workflow_runs?.find((r) => {
+      const created = new Date(r.created_at);
       return (
-        runCreated >= dispatchStart &&
-        run.head_branch === "main" &&
-        run.event === "workflow_dispatch"
+        created >= dispatchStart &&
+        r.head_branch === "main" &&
+        r.event === "workflow_dispatch"
       );
     });
-    if (candidate) {
-      runId = candidate.id;
-      break;
-    }
-    await new Promise((res) => setTimeout(res, 1000));
-  }
-  if (!runId) throw new Error("Não foi possível encontrar workflow run disparado");
 
-  // 4. Polling até conclusão efetiva do run correto
+    if (candidate) runId = candidate.id;
+    else await new Promise((r) => setTimeout(r, 1000));
+  }
+
+  if (!runId) throw new Error("Could not find dispatched workflow run");
+
+  // Wait for completion
   let conclusion = null;
-  polls = 0; // reinicia polling
-  while (conclusion === null && polls < maxPolls) {
-    polls++;
-    const resp = await fetch(
+  for (let i = 0; i < 60 && conclusion === null; i++) {
+    const r = await fetch(
       `${GITHUB_API}/repos/${repo}/actions/runs/${runId}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    const runData = await resp.json();
-    console.log(`Poll ${polls}: status=${runData.status}, conclusion=${runData.conclusion}, id=${runId}`);
-
-    if (runData.status === "completed") {
-      conclusion = runData.conclusion;
+    const d = await r.json();
+    if (d.status === "completed") {
+      conclusion = d.conclusion;
       break;
     }
-    await new Promise((res) => setTimeout(res, 3000));
+    await new Promise((r) => setTimeout(r, 3000));
   }
-  if (conclusion === null) throw new Error("Timeout aguardando finalização do run");
 
-  // 5. Obter artifact e published report URL
+  if (!conclusion)
+    throw new Error("Timeout waiting for workflow completion");
+
+  // Get artifacts
   const artifacts = await getArtifacts(runId, repo, token);
   const reportUrl = findReportUrl(artifacts, repo);
-  const publishedUrl = `https://${repo.split("/")[0]}.github.io/${repo.split("/")[1]}/${testName}.html`;
 
-  // 6. Esperar pelo upload do novo report (cache freshness)
-  await waitForReportUpdate(publishedUrl, 60);
+  const publishedUrl = `https://${repo.split("/")[0]}.github.io/${
+    repo.split("/")[1]
+  }/${testName}.html`;
 
-  // 7. Atualiza estado do run para o testName e retorna ao controller
+  await waitForReportUpdate(publishedUrl);
+
   const result = {
     testName,
     conclusion,
@@ -247,78 +284,7 @@ export async function runRemotePlaywrightTest(testName) {
     reportUrl,
     publishedUrl,
   };
+
   setCompleted(testName, result);
   return result;
-}
-
-
-// --- mantem estas funções tal como estavam (sem /devqa-ai extra)
-async function getArtifacts(runId, repo, token) {
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    Accept: "application/vnd.github+json",
-  }
-  const resp = await fetch(`https://api.github.com/repos/${repo}/actions/runs/${runId}/artifacts`, { headers })
-  if (!resp.ok) throw new Error(`Erro ao buscar artifacts: ${await resp.text()}`)
-  const data = await resp.json()
-  return data.artifacts
-}
-
-function findReportUrl(artifacts, repo) {
-  const reportArtifact = artifacts.find((a) => a.name.includes("playwright-report") || a.name.includes("github-pages"))
-  if (!reportArtifact) return null
-  return `https://github.com/${repo}/actions/artifacts/${reportArtifact.id}`
-}
-
-// Helper para esperar que o report novo esteja disponível
-/*export async function waitForReportUpdate(publishedUrl, maxWait = 60) {
-  let waited = 0
-  let lastModified = null
-  while (waited < maxWait) {
-    try {
-      const resp = await fetch(publishedUrl, { method: "HEAD" })
-      if (resp.ok) {
-        const mod = resp.headers.get("last-modified")
-        if (mod && mod !== lastModified) {
-          return true // O report foi atualizado!
-        }
-        lastModified = mod
-      }
-    } catch (err) {
-      // ignore, pode não existir logo de início
-    }
-    await new Promise((res) => setTimeout(res, 2000))
-    waited += 2
-  }
-  return false // timeout
-}*/
-export async function waitForReportUpdate(publishedUrl, maxWaitSeconds = 60, intervalMs = 5000) {
-  let waited = 0;
-  let lastModified = null;
-
-  const options = {
-    method: "HEAD",
-    headers: lastModified ? { "If-Modified-Since": lastModified } : {}
-  };
-
-  while (waited < maxWaitSeconds) {
-    try {
-      const resp = await fetch(publishedUrl, options);
-      if (resp.ok) {
-        const mod = resp.headers.get("last-modified");
-        // Termina o polling se detecta modificacao ou se mod existe e mudou
-        if (mod && mod !== lastModified) {
-          return true;
-        }
-        lastModified = mod;
-      } else if (resp.status === 304) {
-        // Não modificado, continua polling
-      }
-    } catch (err) {
-      // ignore erro temporário (file não disponível ainda etc)
-    }
-    await new Promise(res => setTimeout(res, intervalMs));
-    waited += intervalMs / 1000;
-  }
-  return false; // timeout
 }

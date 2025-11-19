@@ -25,12 +25,11 @@ export async function saveGeneratedTestsAsFiles() {
     }
   })
 
-  // 2. Salvar cada teste Playwright
+  // 2. Salvar cada teste Playwright (garantir nomes únicos)
+  const usedFilenames = new Set();
   data.forEach((tc) => {
-    const filename = tc.title
-      .toLowerCase()
-      .replace(/\s+/g, "_")
-      .replace(/[^a-z0-9_]/g, "")
+    let base = getFilenameFromPlaywrightCode(tc.playwrightCode, tc.title);
+    const filename = getUniqueFilename(base, usedFilenames, tc.number || tc.url?.match(/\/issues\/(\d+)$/)?.[1]);
     const filePath = path.join(testsDir, `${filename}.spec.js`)
     fs.writeFileSync(filePath, tc.playwrightCode, "utf-8")
   })
@@ -38,10 +37,8 @@ export async function saveGeneratedTestsAsFiles() {
   // 3. Salvar manualSteps (opcional)
   data.forEach((tc) => {
     if (tc.manualSteps && tc.manualSteps.length) {
-      const filename = tc.title
-        .toLowerCase()
-        .replace(/\s+/g, "_")
-        .replace(/[^a-z0-9_]/g, "")
+      const base = getFilenameFromPlaywrightCode(tc.playwrightCode, tc.title);
+      const filename = getUniqueFilename(base, usedFilenames, tc.number || tc.url?.match(/\/issues\/(\d+)$/)?.[1]);
       const stepsPath = path.join(testsDir, `${filename}_manual_steps.json`)
       fs.writeFileSync(stepsPath, JSON.stringify(tc.manualSteps, null, 2), "utf-8")
     }
@@ -188,11 +185,9 @@ export async function saveTestFilesForSingleCase(id) {
   fs.writeFileSync(utilsPath, preparedUtils.trim() + "\n", "utf-8");
 
   // Grava ficheiro do teste Playwright
-  const filename = tc.title
-    .toLowerCase()
-    .replace(/\s+/g, "_")
-    .replace(/[^a-z0-9_]/g, "");
-
+  // For single-case saves include the issue id to avoid filename collisions
+  const baseSingle = getFilenameFromPlaywrightCode(playwrightCode, tc.title);
+  const filename = `${baseSingle}_issue${id}`;
   const filePath = path.join(testsDir, `${filename}.spec.js`);
   fs.writeFileSync(filePath, playwrightCode, "utf-8");
 
@@ -219,7 +214,7 @@ export async function saveTestFilesForSingleCase(id) {
     return {
       message: `✅ Test files for ticket #${id} saved and uploaded successfully`,
       title: tc.title,
-      filename: `${filename}.spec.js`,
+        filename: `${filename}.spec.js`,
       uploaded: {
         test: testUpload.content.html_url,
         utils: utilsUpload.content.html_url,
@@ -232,5 +227,62 @@ export async function saveTestFilesForSingleCase(id) {
       title: tc.title,
       error: err.message,
     };
+  }
+}
+
+// Extract a filename base from playwrightCode's test.describe title when possible,
+// otherwise fallback to the provided fallbackTitle (usually the ticket title).
+function getFilenameFromPlaywrightCode(playwrightCode, fallbackTitle) {
+  try {
+    if (typeof playwrightCode === 'string') {
+      // Try to match test.describe('Title' or "Title" or `Title`)
+      const m = playwrightCode.match(/test\.describe\s*\(\s*['"`]{1}([^'"`]+?)['"`]{1}\s*,/);
+      if (m && m[1]) {
+        return sanitizeFilename(m[1]);
+      }
+      // If no describe, try to extract first test('...') title
+      const m2 = playwrightCode.match(/test\s*\(\s*['"`]{1}([^'"`]+?)['"`]{1}\s*,/);
+      if (m2 && m2[1]) return sanitizeFilename(m2[1]);
+    }
+  } catch (err) {
+    console.warn('Could not extract describe/title from playwrightCode:', err.message);
+  }
+  // Fallback to ticket title
+  return sanitizeFilename(fallbackTitle || 'test');
+}
+
+function sanitizeFilename(title) {
+  return String(title || '')
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')
+    .slice(0, 120) || 'test';
+}
+
+function getUniqueFilename(base, usedSet, issueId) {
+  let name = sanitizeFilename(base);
+  if (!usedSet.has(name)) {
+    usedSet.add(name);
+    return name;
+  }
+
+  // If issueId is provided, prefer to append it for deterministic name
+  if (issueId) {
+    const candidate = `${name}_issue${issueId}`;
+    if (!usedSet.has(candidate)) {
+      usedSet.add(candidate);
+      return candidate;
+    }
+  }
+
+  // Otherwise append numeric suffix until unique
+  let i = 1;
+  while (true) {
+    const candidate = `${name}_${i}`;
+    if (!usedSet.has(candidate)) {
+      usedSet.add(candidate);
+      return candidate;
+    }
+    i++;
   }
 }

@@ -108,15 +108,59 @@ export async function login(page, username, password) {
 }
 `;
 
-  const completion = await openai.chat.completions.create({
-    model: "moonshotai/Kimi-K2-Instruct-0905",
-    messages: [
-      { role: "system", content: "You generate Playwright tests with helper functions." },
-      { role: "user", content: prompt }
-    ],
-    temperature: 0.2,
-    response_format: { type: "json_object" }
-  });
+  // Add some diagnostics and retry logic because HF endpoints sometimes return HTML 500 pages
+  const modelName = "moonshotai/Kimi-K2-Instruct-0905";
+  const maxAttempts = 3;
+  let completion;
+  let lastError = null;
+
+  // small helper
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  console.log(`🧠 Requesting model=${modelName} prompt_length=${String(prompt).length}`);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const includeResponseFormat = attempt === 1; // try structured response only on first attempt
+    try {
+      const req = {
+        model: modelName,
+        messages: [
+          { role: "system", content: "You generate Playwright tests with helper functions." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.2,
+      };
+      if (includeResponseFormat) req.response_format = { type: "json_object" };
+
+      completion = await openai.chat.completions.create(req);
+      lastError = null;
+      break;
+    } catch (err) {
+      lastError = err;
+      // Log key diagnostics
+      console.error(`OpenAI/HF completion error (attempt ${attempt}/${maxAttempts}):`, err?.status || err?.message || err);
+      if (err?.headers) console.error("Response headers:", err.headers);
+      if (err?.requestID) console.error("Request ID:", err.requestID);
+      // If this was the last attempt, we'll rethrow below
+      if (attempt < maxAttempts) {
+        const backoff = 500 * Math.pow(2, attempt - 1);
+        console.warn(`Retrying after ${backoff}ms...`);
+        await sleep(backoff);
+        continue;
+      }
+    }
+  }
+
+  if (lastError && !completion) {
+    // Try to enrich the error message if HF returned HTML
+    const headers = lastError?.headers;
+    const requestID = lastError?.requestID || headers?.['x-request-id'] || headers?.['x-amz-cf-id'];
+    const status = lastError?.status || headers?.status || 500;
+    const errMsg = `Model request failed after ${maxAttempts} attempts. status=${status} requestID=${requestID}`;
+    const e = new Error(errMsg);
+    e.cause = lastError;
+    throw e;
+  }
 
   let responseText = completion.choices?.[0]?.message?.content || "";
 
@@ -129,7 +173,8 @@ export async function login(page, username, password) {
 
   // try parse; if fails, attempt a simple repair of unescaped quotes in code strings
   try {
-    return JSON.parse(responseText);
+    const parsed = JSON.parse(responseText);
+    return ensureDescribeWrapper(parsed, testCase);
   } catch (err1) {
     // attempt to escape inner double-quotes inside code blocks between quotes
     try {
@@ -148,4 +193,27 @@ export async function login(page, username, password) {
       throw err1;
     }
   }
+}
+
+// Ensure Playwright code uses test.describe wrapper
+function ensureDescribeWrapper(parsed, testCase) {
+  if (!parsed || typeof parsed.playwrightCode !== 'string') return parsed;
+  const code = parsed.playwrightCode;
+  // If already contains test.describe, return as-is
+  if (/\btest\.describe\s*\(/.test(code)) return parsed;
+
+  // Find the first test('...') occurrence and wrap all tests into a describe block
+  const lines = code.split(/\r?\n/);
+  const firstTestIndex = lines.findIndex(l => /\btest\s*\(/.test(l));
+  if (firstTestIndex === -1) return parsed;
+
+  const importsAndHeader = lines.slice(0, firstTestIndex).join('\n');
+  const testsBody = lines.slice(firstTestIndex).join('\n');
+
+  const m = testsBody.match(/test\s*\(\s*['"`]([^'"`]+)['"`]/);
+  const describeTitle = m ? m[1] : (testCase && testCase.title ? testCase.title : 'Generated tests');
+
+  const wrapped = `${importsAndHeader}\n\ntest.describe(${JSON.stringify(describeTitle)}, () => {\n${testsBody.split('\n').map(l=> '  '+l).join('\n')}\n});`;
+
+  return { ...parsed, playwrightCode: wrapped };
 }

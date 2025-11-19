@@ -84,17 +84,30 @@ export async function runTestsAndGetReport(req, res) {
 export async function runSinglePlaywrightTestController(req, res) {
   try {
     const { id } = req.params;
+    const requestedFilename = req.body?.filename;
     const isRender = process.env.RENDER === "true" || process.env.ONLINE_MODE === "true";
 
-    const generatedPath = path.join(process.cwd(), "generated_tests.json");
-    const allData = JSON.parse(fs.readFileSync(generatedPath, "utf-8"));
-    const found = allData.find(item => {
-      const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1];
-      return issueNumber === String(id);
-    });
+    // Prefer explicit filename from request body (frontend will send it). If not present,
+    // accept filename passed in the URL (e.g. /run-playwright-test/test_login_successful.spec.js).
+    // Otherwise fall back to looking up by issue number in generated_tests.json (legacy).
+    let filename = null;
+    if (requestedFilename && typeof requestedFilename === 'string') {
+      filename = requestedFilename;
+    } else if (id && /\.spec\.js$|\.js$|_/.test(String(id))) {
+      filename = String(id);
+    } else {
+      const generatedPath = path.join(process.cwd(), "generated_tests.json");
+      const allData = JSON.parse(fs.readFileSync(generatedPath, "utf-8"));
+      const found = allData.find(item => {
+        const issueNumber = item.url?.match(/\/issues\/(\d+)$/)?.[1];
+        return issueNumber === String(id);
+      });
 
-    if (!found?.title) throw new Error(`Título não encontrado para o issue ${id}`);
-    const filename = found.title.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") + ".spec.js";
+      if (!found?.title) throw new Error(`Título não encontrado para o issue ${id}`);
+      filename = found.filename || (found.title.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") + ".spec.js");
+    }
+
+    console.log(`Run single test requested. id=${id} requestedFilename=${requestedFilename} resolved filename=${filename}`);
 
     // Se online/render, inicia execução async e devolve “pending”
     if (isRender) {
