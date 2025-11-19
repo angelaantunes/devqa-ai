@@ -421,7 +421,6 @@ function preprocessMarkdown(md) {
       return match
     }
   )
-
   return processed
 }
 
