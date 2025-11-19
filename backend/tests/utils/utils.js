@@ -1,4 +1,4 @@
-// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, loginWithCredentials, clearFields, assertLoginError, waitForURL, checkLoginError, getErrorMessage, waitForUrl, checkErrorMessage, resetPage, login, clearInput, waitForError, addFirstItemToCart, goToCart, getCartItemPrice
+// Exported helpers: logout, getFirstItemTitle, getFirstItemPrice, loginWithCredentials, clearFields, assertLoginError, waitForURL, checkLoginError, getErrorMessage, waitForUrl, checkErrorMessage, resetPage, clearInput, waitForError, addFirstItemToCart, goToCart, getCartItemPrice, login
 
 export async function logout(page) {
   await page.click('#react-burger-menu-btn');
@@ -60,12 +60,6 @@ export async function resetPage(page) {
   await page.reload();
 }
 
-export async function login(page, username, password) {
-  await page.fill('[data-test="username"]', username);
-  await page.fill('[data-test="password"]', password);
-  await page.click('[data-test="login-button"]');
-}
-
 export async function clearInput(page, selector) {
   await page.click(selector, { clickCount: 3 });
   await page.press(selector, 'Backspace');
@@ -88,4 +82,11 @@ export async function goToCart(page) {
 
 export async function getCartItemPrice(page, index = 0) {
   return page.locator('.cart_item').nth(index).locator('.inventory_item_price').textContent();
+}
+
+export async function login(page, username, password) {
+  await page.fill('[data-test="username"]', username);
+  await page.fill('[data-test="password"]', password);
+  await page.click('[data-test="login-button"]');
+  await page.waitForURL(/.*\/inventory\.html?/);
 }
