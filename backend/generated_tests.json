@@ -3,21 +3,20 @@
     "number": 1,
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('button#react-burger-menu-btn');\n  await page.click('a[data-test=\"logout-sidebar-link\"]');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Login Flow', () => {\n  test('successful login with test_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'test_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n    await expect(page.locator('.title')).toHaveText('Products');\n  });\n});",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"][value=\"Login\"], button:has-text(\"Login\")');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Login flow', () => {\n  test('successful login with standard_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  });\n});",
     "manualSteps": [
-      "1. Open a clean browser instance and navigate to https://www.saucedemo.com/",
-      "2. Verify that the page title contains 'Swag Labs' and both the Username and Password fields are visible.",
-      "3. Locate the Username input field (placeholder='Username').",
-      "4. Clear any pre-filled text and type the exact value test_user.",
-      "5. Locate the Password input field (placeholder='Password').",
-      "6. Clear any pre-filled text and type the exact value secret_sauce.",
-      "7. Locate the Login button (text='Login').",
+      "1. Open a clean browser instance (Chrome/Firefox/Edge) in incognito/private mode.",
+      "2. Navigate to https://www.saucedemo.com/ and wait until the page fully loads (verify the URL and that the login form is visible).",
+      "3. Locate the Username input field (placeholder=\"Username\") and click into it.",
+      "4. Type the exact string standard_user (case-sensitive) into the Username field and verify the text is entered correctly.",
+      "5. Locate the Password input field (placeholder=\"Password\") and click into it.",
+      "6. Type the exact string secret_sauce into the Password field and verify the text is masked/entered correctly.",
+      "7. Locate the Login button (text=\"Login\") and ensure it is enabled.",
       "8. Click the Login button.",
-      "9. Wait for the browser to finish navigation.",
-      "10. Verify the current URL is https://www.saucedemo.com/inventory.html.",
-      "11. Verify that the inventory page header (class='title') contains the text 'Products'.",
-      "12. Logout and close the browser to clean up the test environment."
+      "9. Wait for the browser to complete navigation and verify the new URL is https://www.saucedemo.com/inventory.html.",
+      "10. Confirm that the inventory page loads successfully (e.g., page title contains \"Swag Labs\" and inventory items are displayed).",
+      "11. Log the test result as PASSED if all steps complete without error; otherwise, capture console/network logs and screenshots for failure analysis."
     ]
   },
   {
@@ -25,20 +24,20 @@
     "scenario": "positive",
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "filename": "test_login_successful.spec.js",
-    "utilsCode": "export async function fillText(page, selector, text) {\n  await page.fill(selector, text);\n}\n\nexport async function clickElement(page, selector) {\n  await page.click(selector);\n}\n\nexport async function assertUrl(page, expectedUrl) {\n  await page.waitForURL(expectedUrl);\n}\n\nexport async function assertText(page, selector, expectedText) {\n  await page.waitForSelector(selector);\n  const text = await page.textContent(selector);\n  if (!text.includes(expectedText)) {\n    throw new Error(`Expected text \"${expectedText}\" not found in \"${text}\"`);\n  }\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { fillText, clickElement, assertUrl, assertText } from '../utils.js';\n\ntest('Test Login Successful', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com');\n  await expect(page).toHaveTitle(/Swag Labs/);\n  \n  await fillText(page, 'input[placeholder=\"Username\"]', 'standard_user');\n  await fillText(page, 'input[placeholder=\"Password\"]', 'secret_sauce');\n  await clickElement(page, 'input[type=\"submit\"]');\n  \n  await assertUrl(page, 'https://www.saucedemo.com/inventory.html');\n  await assertText(page, 'span.title', 'Products');\n});",
+    "filename": "login_with_standard_user_should_succeed.spec.js",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest('Login with standard_user should succeed', async ({ page }) => {\n  await page.goto('https://www.saucedemo.com/');\n  await expect(page).toHaveTitle(/Swag Labs/);\n\n  await login(page, 'standard_user', 'secret_sauce');\n\n  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n});",
     "manualSteps": [
-      "Navigate to https://www.saucedemo.com",
-      "Verify the page title contains 'Swag Labs'",
+      "Navigate to https://www.saucedemo.com/",
+      "Verify the page title is 'Swag Labs'",
       "Locate the Username input field with placeholder 'Username'",
       "Enter the text 'standard_user' into the Username field",
       "Locate the Password input field with placeholder 'Password'",
       "Enter the text 'secret_sauce' into the Password field",
-      "Click the Login button",
+      "Click the 'Login' button",
       "Wait for the URL to change to https://www.saucedemo.com/inventory.html",
-      "Verify the current URL is https://www.saucedemo.com/inventory.html",
-      "Verify the page contains the text 'Products' in the header"
+      "Verify the current page URL is https://www.saucedemo.com/inventory.html",
+      "Verify the page now displays the text 'Products' in the header"
     ]
   },
   {
@@ -88,46 +87,27 @@
     ]
   },
   {
-    "number": 6,
-    "title": "Add the item to the checkout",
-    "url": "https://github.com/angelaantunes/devqa-ai/issues/6",
-    "utilsCode": "/**\n * Adds the first inventory item to the cart.\n * @param {import('@playwright/test').Page} page\n */\nexport async function addFirstItemToCart(page) {\n  const addButton = page.locator('.inventory_item').first().locator('button:has-text(\"Add to cart\")');\n  await addButton.click();\n  await expect(addButton).toHaveText('Remove');\n}\n\n/**\n * Clicks the shopping-cart icon to navigate to the cart page.\n * @param {import('@playwright/test').Page} page\n */\nexport async function goToCart(page) {\n  await page.click('.shopping_cart_container');\n  await expect(page).toHaveURL(/.*cart.html/);\n}\n\n/**\n * Returns the displayed price text for the nth cart item (0-based index).\n * @param {import('@playwright/test').Page} page\n * @param {number} index\n * @returns {Promise<string>}\n */\nexport async function getCartItemPrice(page, index = 0) {\n  return page.locator('.cart_item').nth(index).locator('.inventory_item_price').textContent();\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { addFirstItemToCart, goToCart, getCartItemPrice } from './utils.js';\n\ntest.describe('Add first item to checkout', () => {\n  test('should add the first item and validate $29.99 in cart', async ({ page }) => {\n    await page.goto('/inventory.html');\n\n    // Add the first item to the cart\n    await addFirstItemToCart(page);\n\n    // Navigate to cart\n    await goToCart(page);\n\n    // Validate price\n    const price = await getCartItemPrice(page, 0);\n    expect(price).toBe('$29.99');\n  });\n});",
-    "manualSteps": [
-      "1. Navigate to the inventory page (URL containing /inventory.html).",
-      "2. Verify that at least one inventory item is displayed.",
-      "3. Locate the first inventory item card.",
-      "4. Within the first item card, identify the ‘Add to cart’ button (text equals ‘Add to cart’).",
-      "5. Click the ‘Add to cart’ button.",
-      "6. Verify that the button text changes to ‘Remove’ (indicating the item was added).",
-      "7. Locate the shopping-cart icon (class shopping_cart_container) in the header.",
-      "8. Click the shopping-cart icon.",
-      "9. Verify that the browser navigates to the cart page (URL containing /cart.html).",
-      "10. Verify that exactly one item is listed in the cart.",
-      "11. Within the cart item, verify that the item price is displayed as $29.99."
-    ]
-  },
-  {
     "number": 5,
     "title": "Check first item",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/5",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('input[placeholder=\"Username\"]', username);\n  await page.fill('input[placeholder=\"Password\"]', password);\n  await page.click('input[type=\"submit\"]');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\n\ntest.describe(\"Check first item title and price after successful login\", () => {\n  test('Check first item title and price after successful login', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  \n    const firstItem = page.locator('.inventory_item').first();\n    await expect(firstItem.locator('.inventory_item_name')).toHaveText('Sauce Labs Backpack');\n    await expect(firstItem.locator('.inventory_item_price')).toHaveText('$69.99');\n  });\n});",
+    "utilsCode": "/**\n * utils.js – reusable helper functions for Saucedemo pages\n */\n\n/**\n * Log in with given credentials\n * @param {import('@playwright/test').Page} page\n * @param {string} username\n * @param {string} password\n */\nexport async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\n/**\n * Log out via burger menu\n * @param {import('@playwright/test').Page} page\n */\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n}\n\n/**\n * Return name and price text of the first inventory item\n * @param {import('@playwright/test').Page} page\n * @returns {Promise<{name:string,price:string}>}\n */\nexport async function getFirstInventoryItem(page) {\n  const item = page.locator('.inventory_item').first();\n  await item.waitFor({ state: 'visible' });\n  const name = await item.locator('.inventory_item_name').innerText();\n  const price = await item.locator('.inventory_item_price').innerText();\n  return { name, price };\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login, logout, getFirstInventoryItem } from './utils.js';\n\ntest.describe('Inventory Item Validation', () => {\n  test('First item should have title \"Sauce Labs Backpack\" and price \"$29.99\"', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n\n    // Wait for inventory list to render\n    await page.waitForURL(/.*inventory\\.html?/);\n    await expect(page.locator('.inventory_list')).toBeVisible();\n\n    const { name, price } = await getFirstInventoryItem(page);\n\n    expect(name).toBe('Sauce Labs Backpack');\n    expect(price).toBe('$29.99');\n\n    // Optional cleanup\n    await logout(page);\n  });\n});",
     "manualSteps": [
-      "1. Open the browser and navigate to https://www.saucedemo.com/",
-      "2. Wait for the login page to load completely",
-      "3. Locate the Username input field with placeholder 'Username'",
-      "4. Enter the text 'standard_user' into the Username field",
-      "5. Locate the Password input field with placeholder 'Password'",
-      "6. Enter the text 'secret_sauce' into the Password field",
-      "7. Locate and click the 'Login' button",
-      "8. Wait for the URL to change to https://www.saucedemo.com/inventory.html",
-      "9. Verify that the inventory page has loaded and items are visible",
-      "10. Locate the first item card in the inventory list",
-      "11. Within the first item card, find the item title element",
-      "12. Verify that the item title text is exactly 'Sauce Labs Backpack'",
-      "13. Within the same first item card, find the item price element",
-      "14. Verify that the item price text is exactly '$69.99'"
+      "1. Open a clean browser instance (Chrome/Firefox/Edge).",
+      "2. Navigate to https://www.saucedemo.com/.",
+      "3. Verify the login page is displayed (username & password fields visible).",
+      "4. Enter the text standard_user in the Username field.",
+      "5. Enter the text secret_sauce in the Password field.",
+      "6. Click the LOGIN button.",
+      "7. Verify the URL changes to https://www.saucedemo.com/inventory.html (or /inventory.htm).",
+      "8. Verify the inventory list container is visible (at least one .inventory_item is present).",
+      "9. Locate the first item card in the list (top-most .inventory_item).",
+      "10. Inside the first item card, read the item name text.",
+      "11. Assert that the name equals Sauce Labs Backpack.",
+      "12. Inside the same card, read the item price text.",
+      "13. Assert that the price equals $29.99.",
+      "14. Log a pass/fail result for both assertions.",
+      "15. Log out (via the burger menu → Logout) to return to the login page for repeatability."
     ]
   }
 ]
