@@ -1,4 +1,5 @@
 import { Paper, Typography, Accordion, AccordionSummary, AccordionDetails, Link, Divider, Button } from "@mui/material"
+import ReactMarkdown from "react-markdown"
 import axios from "axios"
 import { useState } from "react"
 import { ExpandMore } from "@mui/icons-material"
@@ -280,21 +281,27 @@ function TestCasesSection({ testCases: initialTestCases }) {
             {tc.body && (
               <>
                 <Typography variant="subtitle1">📝 Content</Typography>
-                <Typography sx={{ mb: 2 }}>{tc.body}</Typography>
+                <Box sx={{ mb: 2, background: "#f8f8fa", p: 2, borderRadius: 1 }}>
+                  <ReactMarkdown>{tc.body}</ReactMarkdown>
+                </Box>
                 <Divider sx={{ my: 1 }} />
               </>
             )}
             {tc.manualSteps && (
               <>
                 <Typography variant="subtitle1">📋 Manual Steps</Typography>
-                <ol>
+                <Box sx={{ mb: 1, background: "#f8f8fa", p: 2, borderRadius: 1 }}>
                   {Array.isArray(tc.manualSteps)
-                    ? tc.manualSteps.map((step, j) => <li key={j}>{step}</li>)
+                    ? tc.manualSteps.map((step, j) => (
+                        <div key={j} style={{ marginBottom: 4 }}>{step}</div>
+                      ))
                     : tc.manualSteps
                         .split(/\n\d+\.\s|\n|^\d+\.\s/)
                         .filter((s) => s.trim())
-                        .map((step, j) => <li key={j}>{step.trim()}</li>)}
-                </ol>
+                        .map((step, j) => (
+                          <div key={j} style={{ marginBottom: 4 }}>{step.trim()}</div>
+                        ))}
+                </Box>
                 <Divider sx={{ my: 1 }} />
               </>
             )}
