@@ -3,21 +3,22 @@
     "number": 1,
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function assertErrorMessage(page, expectedText) {\n  const errorLocator = page.locator('[data-test=\"error\"]');\n  await expect(errorLocator).toBeVisible();\n  await expect(errorLocator).toContainText(expectedText);\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login, assertErrorMessage } from './utils.js';\n\ntest.describe('Login negative scenarios', () => {\n  test.beforeEach(async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n  });\n\n  test('empty username shows error', async ({ page }) => {\n    await login(page, '', 'secret_sauce');\n    await assertErrorMessage(page, 'Epic sadface: Username is required');\n  });\n\n  test('empty password shows error', async ({ page }) => {\n    await login(page, 'standard_user', '');\n    await assertErrorMessage(page, 'Epic sadface: Password is required');\n  });\n\n  test('invalid credentials show generic error', async ({ page }) => {\n    await login(page, 'locked_out_user', 'wrongpass');\n    await assertErrorMessage(page, 'Epic sadface: Username and password do not match any user in this service');\n  });\n\n  test('SQL injection fails gracefully', async ({ page }) => {\n    const payload = \"admin' OR '1'='1\";\n    await login(page, payload, payload);\n    await assertErrorMessage(page, 'Epic sadface: Username and password do not match any user in this service');\n  });\n\n  test('very long username and password', async ({ page }) => {\n    const long = 'a'.repeat(1000);\n    await login(page, long, long);\n    await assertErrorMessage(page, 'Epic sadface: Username and password do not match any user in this service');\n  });\n\n  test('network offline shows client error', async ({ page, context }) => {\n    await context.setOffline(true);\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText(/network|offline|failed/i);\n  });\n\n  test('rapid click sends only one request', async ({ page }) => {\n    let requestCount = 0;\n    page.on('request', req => {\n      if (req.url().includes('login')) requestCount++;\n    });\n    await page.fill('[data-test=\"username\"]', 'standard_user');\n    await page.fill('[data-test=\"password\"]', 'secret_sauce');\n    await Promise.all([\n      page.click('[data-test=\"login-button\"]', { clickCount: 5 }),\n      page.waitForResponse(resp => resp.url().includes('login') && resp.status() === 200)\n    ]);\n    expect(requestCount).toBe(1);\n  });\n\n  test('server 500 returns generic error', async ({ page }) => {\n    await page.route('**/login', route => route.abort('failed'));\n    await login(page, 'standard_user', 'secret_sauce');\n    await assertErrorMessage(page, 'Epic sadface: Username and password do not match any user in this service');\n  });\n\n  test('back button after login redirects to login', async ({ page }) => {\n    await login(page, 'standard_user', 'secret_sauce');\n    await page.waitForURL('**/inventory.html');\n    await page.goBack();\n    await expect(page).toHaveURL(/.*saucedemo\\.com\\/$/);\n  });\n\n  test('direct visit to inventory without login redirects', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/inventory.html');\n    await expect(page).toHaveURL(/.*saucedemo\\.com\\/$/);\n  });\n});",
+    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n  await expect(page).toHaveURL('https://www.saucedemo.com/');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\n\ntest.describe(\"Test Login Successful\", () => {\n  test('Test Login Successful', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n    await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n  });\n});",
     "manualSteps": [
-      "1. Navigate to https://www.saucedemo.com/",
-      "2. Leave the Username field empty and click Login → verify error message “Epic sadface: Username is required” appears.",
-      "3. Refresh the page, enter a valid username (standard_user) but leave Password empty and click Login → verify error message “Epic sadface: Password is required” appears.",
-      "4. Refresh the page, enter an invalid username (e.g., locked_out_user) and an invalid password (e.g., wrongpass) and click Login → verify error message “Epic sadface: Username and password do not match any user in this service” appears.",
-      "5. Refresh the page, enter a valid username (standard_user) and an invalid password (badpass) and click Login → verify the same generic error message appears.",
-      "6. Refresh the page, enter SQL injection string \"admin' OR '1'='1\" in Username and Password and click Login → verify login fails gracefully with the same generic error message.",
-      "7. Refresh the page, enter 1000+ characters in Username and Password fields and click Login → verify login fails gracefully and no server error (5xx) occurs.",
-      "8. Refresh the page, enter valid credentials but disable network (via devtools offline) and click Login → verify user-friendly error or retry mechanism appears without crashing.",
-      "9. Refresh the page, enter valid credentials, click Login, then immediately click Login again multiple times rapidly → verify only one request is sent and no duplicate sessions are created.",
-      "10. Refresh the page, enter valid credentials, simulate server 500 (via request interception) on POST /login → verify generic error message appears and user remains on login page.",
-      "11. Refresh the page, enter valid credentials, click Login, then press browser Back button → verify user is redirected back to login page and session is invalidated.",
-      "12. Refresh the page, enter valid credentials, click Login, then manually change URL to /inventory.html without logging in → verify user is redirected back to login page."
+      "1. Open a new browser tab and navigate to https://www.saucedemo.com/",
+      "2. Wait until the login form is fully rendered (both username and password fields are visible)",
+      "3. Locate the username input field by its placeholder attribute (value = 'Username')",
+      "4. Clear any pre-filled text in the username field",
+      "5. Type the exact string standard_user into the username field",
+      "6. Locate the password input field by its placeholder attribute (value = 'Password')",
+      "7. Clear any pre-filled text in the password field",
+      "8. Type the exact string secret_sauce into the password field",
+      "9. Locate the Login button (text = 'Login')",
+      "10. Click the Login button",
+      "11. Wait for the browser URL to change to https://www.saucedemo.com/inventory.html",
+      "12. Verify that the inventory page is displayed (e.g., check for presence of the page title 'Products')",
+      "13. Confirm that the user is logged in (e.g., presence of the shopping-cart icon)"
     ]
   },
   {
@@ -85,29 +86,6 @@
       "Assert that the error text is exactly Epic sadface: Sorry, this user has been locked out.",
       "Take a screenshot of the error for evidence (optional but recommended)",
       "Mark the test as passed if all assertions are true"
-    ]
-  },
-  {
-    "number": 5,
-    "title": "Check first item",
-    "url": "https://github.com/angelaantunes/devqa-ai/issues/5",
-    "utilsCode": "export async function login(page, username, password) {\n  await page.fill('[data-test=\"username\"]', username);\n  await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\n\ntest.describe(\"Check first item title and price after successful login\", () => {\n  test('Check first item title and price after successful login', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  \n    const firstItem = page.locator('.inventory_item').first();\n    await expect(firstItem).toBeVisible();\n  \n    const itemTitle = firstItem.locator('.inventory_item_name');\n    await expect(itemTitle).toHaveText('Sauce Labs Backpack');\n  \n    const itemPrice = firstItem.locator('.inventory_item_price');\n    await expect(itemPrice).toHaveText('$69.99');\n  });\n});",
-    "manualSteps": [
-      "1. Open the browser and navigate to https://www.saucedemo.com/",
-      "2. Wait for the login page to load completely",
-      "3. Locate the Username input field with placeholder 'Username'",
-      "4. Enter the text 'standard_user' into the Username field",
-      "5. Locate the Password input field with placeholder 'Password'",
-      "6. Enter the text 'secret_sauce' into the Password field",
-      "7. Locate and click the 'Login' button",
-      "8. Wait for the URL to change to https://www.saucedemo.com/inventory.html",
-      "9. Verify that the inventory page has loaded by checking for visibility of the inventory list",
-      "10. Locate the first item in the inventory list",
-      "11. Within the first item card, locate the item title element",
-      "12. Verify that the item title text is exactly 'Sauce Labs Backpack'",
-      "13. Within the first item card, locate the item price element",
-      "14. Verify that the item price text is exactly '$69.99'"
     ]
   }
 ]
