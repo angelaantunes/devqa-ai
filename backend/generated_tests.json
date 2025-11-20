@@ -3,32 +3,100 @@
     "number": 1,
     "title": "Test Login Successful",
     "url": "https://github.com/angelaantunes/devqa-ai/issues/1",
-    "utilsCode": "export async function login(page, username, password) {\n  if (username !== undefined) await page.fill('[data-test=\"username\"]', username);\n  if (password !== undefined) await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}\n\nexport async function logout(page) {\n  await page.click('#react-burger-menu-btn');\n  await page.click('[data-test=\"logout-sidebar-link\"]');\n  await page.waitForURL('https://www.saucedemo.com/');\n}\n\nexport async function getErrorMessage(page) {\n  return await page.textContent('[data-test=\"error\"]');\n}",
-    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Swag Labs Login - All scenarios', () => {\n  test.beforeEach(async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n  });\n\n  test('Positive: standard_user can log in', async ({ page }) => {\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n    await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n  });\n\n  test('Negative: empty username and password', async ({ page }) => {\n    await login(page, '', '');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Username is required');\n  });\n\n  test('Negative: empty password', async ({ page }) => {\n    await login(page, 'standard_user', '');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Password is required');\n  });\n\n  test('Negative: empty username', async ({ page }) => {\n    await login(page, '', 'secret_sauce');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Username is required');\n  });\n\n  test('Negative: invalid username', async ({ page }) => {\n    await login(page, 'bad_user', 'secret_sauce');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Username and password do not match');\n  });\n\n  test('Negative: invalid password', async ({ page }) => {\n    await login(page, 'standard_user', 'bad_pass');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Username and password do not match');\n  });\n\n  test('Negative: locked_out_user', async ({ page }) => {\n    await login(page, 'locked_out_user', 'secret_sauce');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Sorry, this user has been locked out');\n  });\n\n  test('Positive: login with Enter key', async ({ page }) => {\n    await page.fill('[data-test=\"username\"]', 'standard_user');\n    await page.fill('[data-test=\"password\"]', 'secret_sauce');\n    await page.press('[data-test=\"password\"]', 'Enter');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  });\n});",
-    "manualSteps": [
-      "1. Open a clean browser instance (Chrome, Edge, Firefox, Safari) in incognito/private mode.",
-      "2. Navigate to https://www.saucedemo.com/ and verify the page title contains 'Swag Labs'.",
-      "3. Verify that the Username field (placeholder='Username') is visible, enabled and empty.",
-      "4. Verify that the Password field (placeholder='Password') is visible, enabled and masked.",
-      "5. Verify that the Login button is visible and enabled.",
-      "6. Enter the text 'standard_user' into the Username field.",
-      "7. Enter the text 'secret_sauce' into the Password field.",
-      "8. Click the Login button.",
-      "9. Verify the browser URL is exactly https://www.saucedemo.com/inventory.html.",
-      "10. Verify the inventory page header 'Products' is displayed.",
-      "11. Logout via the hamburger menu and confirm you return to the login page (positive test cleanup).",
-      "",
-      "Negative scenarios:",
-      "12. Leave both fields empty → click Login → verify error message 'Epic sadface: Username is required'.",
-      "13. Enter only username 'standard_user' → click Login → verify error 'Epic sadface: Password is required'.",
-      "14. Enter only password 'secret_sauce' → click Login → verify error 'Epic sadface: Username is required'.",
-      "15. Enter invalid username 'bad_user' and valid password 'secret_sauce' → click Login → verify error 'Epic sadface: Username and password do not match any user in this service'.",
-      "16. Enter valid username 'standard_user' and invalid password 'bad_pass' → click Login → verify same error as step 15.",
-      "17. Enter locked-out user 'locked_out_user' and correct password 'secret_sauce' → click Login → verify error 'Epic sadface: Sorry, this user has been locked out'.",
-      "18. Open the login page, refresh, enter 'standard_user'/'secret_sauce', press Enter key instead of clicking Login → verify successful navigation to inventory page.",
-      "19. Open the login page, enter 'standard_user'/'secret_sauce', click the eye icon (if present) to reveal password, click Login → verify successful login.",
-      "20. Open the login page, enter 'standard_user'/'secret_sauce', click Login, then press browser Back → verify login page is shown (session not restored)."
-    ]
+    "utilsCode": "export async function login(page, username, password) {\n  if (username !== undefined) await page.fill('[data-test=\"username\"]', username);\n  if (password !== undefined) await page.fill('[data-test=\"password\"]', password);\n  await page.click('[data-test=\"login-button\"]');\n}",
+    "playwrightCode": "import { test, expect } from '@playwright/test';\nimport { login } from './utils.js';\n\ntest.describe('Login - Positive Scenarios', () => {\n  test('TC-001: successful login with standard_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n    await expect(page.locator('[data-test=\"title\"]')).toHaveText('Products');\n  });\n\n  test('TC-002: successful login with problem_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'problem_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  });\n\n  test('TC-003: successful login with performance_glitch_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'performance_glitch_user', 'secret_sauce');\n    await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');\n  });\n});\n\ntest.describe('Login - Negative Scenarios', () => {\n  test('TC-101: login fails with locked_out_user', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'locked_out_user', 'secret_sauce');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Sorry, this user has been locked out.');\n    await expect(page).toHaveURL('https://www.saucedemo.com/');\n  });\n\n  test('TC-102: login fails with empty username', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, '', 'secret_sauce');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Username is required');\n    await expect(page).toHaveURL('https://www.saucedemo.com/');\n  });\n\n  test('TC-103: login fails with empty password', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'standard_user', '');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Password is required');\n    await expect(page).toHaveURL('https://www.saucedemo.com/');\n  });\n\n  test('TC-104: login fails with invalid credentials', async ({ page }) => {\n    await page.goto('https://www.saucedemo.com/');\n    await login(page, 'invalid_user', 'wrong_password');\n    await expect(page.locator('[data-test=\"error\"]')).toContainText('Username and password do not match any user in this service');\n    await expect(page).toHaveURL('https://www.saucedemo.com/');\n  });\n});",
+    "manualSteps": {
+      "positive": [
+        {
+          "scenario": "TC-001 Successful Login with standard_user",
+          "steps": [
+            "1. Open a clean browser instance.",
+            "2. Navigate to https://www.saucedemo.com/.",
+            "3. Verify the page title is 'Swag Labs'.",
+            "4. Locate the Username input field (placeholder='Username').",
+            "5. Enter the text 'standard_user'.",
+            "6. Locate the Password input field (placeholder='Password').",
+            "7. Enter the text 'secret_sauce'.",
+            "8. Locate the Login button.",
+            "9. Click the Login button.",
+            "10. Verify the URL changes to https://www.saucedemo.com/inventory.html.",
+            "11. Verify the page contains the text 'Products' (inventory list header)."
+          ]
+        },
+        {
+          "scenario": "TC-002 Successful Login with problem_user",
+          "steps": [
+            "1. Open a clean browser instance.",
+            "2. Navigate to https://www.saucedemo.com/.",
+            "3. Enter 'problem_user' in the Username field.",
+            "4. Enter 'secret_sauce' in the Password field.",
+            "5. Click Login.",
+            "6. Assert the URL is https://www.saucedemo.com/inventory.html."
+          ]
+        },
+        {
+          "scenario": "TC-003 Successful Login with performance_glitch_user",
+          "steps": [
+            "1. Open a clean browser instance.",
+            "2. Navigate to https://www.saucedemo.com/.",
+            "3. Enter 'performance_glitch_user' in the Username field.",
+            "4. Enter 'secret_sauce' in the Password field.",
+            "5. Click Login.",
+            "6. Assert the URL is https://www.saucedemo.com/inventory.html."
+          ]
+        }
+      ],
+      "negative": [
+        {
+          "scenario": "TC-101 Login fails with locked_out_user",
+          "steps": [
+            "1. Open a clean browser instance.",
+            "2. Navigate to https://www.saucedemo.com/.",
+            "3. Enter 'locked_out_user' in the Username field.",
+            "4. Enter 'secret_sauce' in the Password field.",
+            "5. Click Login.",
+            "6. Verify the error message 'Epic sadface: Sorry, this user has been locked out.' is displayed.",
+            "7. Verify the URL remains https://www.saucedemo.com/."
+          ]
+        },
+        {
+          "scenario": "TC-102 Login fails with empty username",
+          "steps": [
+            "1. Open a clean browser instance.",
+            "2. Navigate to https://www.saucedemo.com/.",
+            "3. Leave the Username field empty.",
+            "4. Enter 'secret_sauce' in the Password field.",
+            "5. Click Login.",
+            "6. Verify the error message 'Epic sadface: Username is required' is displayed.",
+            "7. Verify the URL remains https://www.saucedemo.com/."
+          ]
+        },
+        {
+          "scenario": "TC-103 Login fails with empty password",
+          "steps": [
+            "1. Open a clean browser instance.",
+            "2. Navigate to https://www.saucedemo.com/.",
+            "3. Enter 'standard_user' in the Username field.",
+            "4. Leave the Password field empty.",
+            "5. Click Login.",
+            "6. Verify the error message 'Epic sadface: Password is required' is displayed.",
+            "7. Verify the URL remains https://www.saucedemo.com/."
+          ]
+        },
+        {
+          "scenario": "TC-104 Login fails with invalid credentials",
+          "steps": [
+            "1. Open a clean browser instance.",
+            "2. Navigate to https://www.saucedemo.com/.",
+            "3. Enter 'invalid_user' in the Username field.",
+            "4. Enter 'wrong_password' in the Password field.",
+            "5. Click Login.",
+            "6. Verify the error message 'Epic sadface: Username and password do not match any user in this service' is displayed.",
+            "7. Verify the URL remains https://www.saucedemo.com/."
+          ]
+        }
+      ]
+    }
   },
   {
     "number": 1,
